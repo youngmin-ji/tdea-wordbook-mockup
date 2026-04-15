@@ -161,6 +161,122 @@ body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; b
 /* Alphabet group header */
 .alpha-group-header { font-size:13px; font-weight:700; color:#7c8aff; padding:8px 4px 4px; margin-top:8px; }
 .alpha-group-header:first-child { margin-top:0; }
+
+/* ============================================================
+   QUIZ PLAY - Action Panel
+   ============================================================ */
+.quiz-panel { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#f5f6fa; z-index:300; overflow-y:auto; }
+.quiz-panel.open { display:block; }
+.quiz-panel-inner { max-width:680px; margin:0 auto; padding:32px 24px; }
+
+/* Quiz Header */
+.qp-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+.qp-close { background:none; border:none; font-size:24px; cursor:pointer; color:#6b7280; padding:4px 8px; border-radius:6px; }
+.qp-close:hover { background:#e5e7eb; color:#374151; }
+.qp-title { font-size:18px; font-weight:700; color:#1a1f36; }
+.qp-progress-text { font-size:13px; color:#9ca3af; font-weight:600; }
+
+/* Progress Bar */
+.qp-progress-bar { width:100%; height:8px; background:#e5e7eb; border-radius:4px; margin-bottom:32px; overflow:hidden; }
+.qp-progress-fill { height:100%; background:linear-gradient(90deg,#7c8aff,#5b6bff); border-radius:4px; transition:width .4s ease; }
+
+/* Question Card */
+.qp-question-card { background:#fff; border-radius:16px; padding:32px; box-shadow:0 2px 12px rgba(0,0,0,.06); margin-bottom:24px; }
+.qp-q-type { display:inline-block; padding:4px 12px; border-radius:16px; font-size:11px; font-weight:700; margin-bottom:16px; }
+.qp-q-type.type1 { background:#ede9fe; color:#7c3aed; }
+.qp-q-type.type2 { background:#dbeafe; color:#2563eb; }
+.qp-q-type.type3 { background:#d1fae5; color:#059669; }
+.qp-q-type.type4 { background:#fef3c7; color:#d97706; }
+.qp-q-label { font-size:13px; color:#9ca3af; margin-bottom:8px; }
+.qp-q-word { font-size:32px; font-weight:800; color:#1a1f36; margin-bottom:4px; line-height:1.3; }
+.qp-q-hint { font-size:14px; color:#9ca3af; margin-bottom:24px; }
+.qp-q-sentence { font-size:18px; color:#374151; line-height:1.7; margin-bottom:24px; }
+.qp-q-sentence .blank { display:inline-block; min-width:100px; border-bottom:3px solid #7c8aff; margin:0 4px; text-align:center; color:#7c8aff; font-weight:700; }
+.qp-q-sound { background:none; border:1px solid #e5e7eb; border-radius:50%; width:44px; height:44px; font-size:20px; cursor:pointer; color:#7c8aff; margin-bottom:20px; transition:all .2s; }
+.qp-q-sound:hover { background:#f5f3ff; border-color:#7c8aff; }
+
+/* Options (4-choice) */
+.qp-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.qp-option { padding:14px 18px; border:2px solid #e5e7eb; border-radius:12px; font-size:15px; font-weight:500; color:#374151; cursor:pointer; background:#fff; transition:all .2s; text-align:left; }
+.qp-option:hover:not(.disabled) { border-color:#7c8aff; background:#f5f3ff; }
+.qp-option.selected { border-color:#7c8aff; background:#ede9fe; color:#5b6bff; font-weight:700; }
+.qp-option.correct { border-color:#059669; background:#d1fae5; color:#059669; font-weight:700; }
+.qp-option.wrong { border-color:#dc2626; background:#fee2e2; color:#dc2626; font-weight:700; }
+.qp-option.disabled { cursor:default; opacity:.7; }
+.qp-option .opt-marker { display:inline-block; width:24px; height:24px; border-radius:50%; background:#f0f1f5; text-align:center; line-height:24px; font-size:12px; font-weight:700; color:#6b7280; margin-right:10px; }
+.qp-option.correct .opt-marker { background:#059669; color:#fff; }
+.qp-option.wrong .opt-marker { background:#dc2626; color:#fff; }
+
+/* Spelling Input */
+.qp-spell-input { width:100%; padding:16px 20px; border:2px solid #e5e7eb; border-radius:12px; font-size:20px; font-weight:600; text-align:center; outline:none; transition:border-color .2s; letter-spacing:2px; }
+.qp-spell-input:focus { border-color:#7c8aff; }
+.qp-spell-input.correct { border-color:#059669; background:#f0fdf4; color:#059669; }
+.qp-spell-input.wrong { border-color:#dc2626; background:#fef2f2; color:#dc2626; }
+.qp-spell-hint { text-align:center; margin-top:8px; font-size:13px; color:#9ca3af; }
+.qp-spell-hint .letter-boxes { display:flex; justify-content:center; gap:4px; margin-top:8px; }
+.qp-spell-hint .letter-box { width:28px; height:34px; border:2px solid #d1d5db; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; color:#1a1f36; background:#fff; }
+.qp-spell-hint .letter-box.revealed { background:#ede9fe; border-color:#7c8aff; color:#7c8aff; }
+
+/* Submit / Next */
+.qp-submit-btn { width:100%; padding:14px; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; transition:all .2s; margin-top:4px; }
+.qp-submit-btn.submit { background:#7c8aff; color:#fff; }
+.qp-submit-btn.submit:hover { background:#5b6bff; }
+.qp-submit-btn.submit:disabled { background:#d1d5db; cursor:not-allowed; }
+.qp-submit-btn.next { background:#1a1f36; color:#fff; }
+.qp-submit-btn.next:hover { background:#2d3452; }
+
+/* Feedback */
+.qp-feedback { display:flex; align-items:center; gap:12px; padding:14px 18px; border-radius:12px; margin-bottom:12px; font-size:14px; font-weight:600; }
+.qp-feedback.correct { background:#d1fae5; color:#059669; }
+.qp-feedback.wrong { background:#fee2e2; color:#dc2626; }
+.qp-feedback .fb-icon { font-size:22px; }
+.qp-feedback .fb-answer { font-weight:400; margin-left:auto; font-size:13px; }
+
+/* ============================================================
+   QUIZ RESULT
+   ============================================================ */
+.qr-card { background:#fff; border-radius:16px; padding:36px; box-shadow:0 2px 12px rgba(0,0,0,.06); text-align:center; }
+.qr-emoji { font-size:56px; margin-bottom:12px; }
+.qr-title { font-size:24px; font-weight:800; color:#1a1f36; margin-bottom:6px; }
+.qr-subtitle { font-size:14px; color:#9ca3af; margin-bottom:28px; }
+
+.qr-stats { display:flex; justify-content:center; gap:32px; margin-bottom:28px; }
+.qr-stat { text-align:center; }
+.qr-stat-value { font-size:28px; font-weight:800; }
+.qr-stat-value.green { color:#059669; }
+.qr-stat-value.red { color:#dc2626; }
+.qr-stat-value.blue { color:#7c8aff; }
+.qr-stat-label { font-size:12px; color:#9ca3af; margin-top:4px; }
+
+.qr-accuracy-bar { width:100%; height:12px; background:#fee2e2; border-radius:6px; overflow:hidden; margin-bottom:28px; }
+.qr-accuracy-fill { height:100%; background:linear-gradient(90deg,#059669,#34d399); border-radius:6px; transition:width 1s ease; }
+
+.qr-word-list { text-align:left; margin-bottom:24px; }
+.qr-word-list-title { font-size:13px; font-weight:700; color:#374151; margin-bottom:10px; }
+.qr-word-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; margin-bottom:4px; font-size:14px; }
+.qr-word-row.correct { background:#f0fdf4; }
+.qr-word-row.wrong { background:#fef2f2; }
+.qr-word-row .qr-icon { font-size:16px; }
+.qr-word-row .qr-w { font-weight:700; color:#1a1f36; }
+.qr-word-row .qr-m { color:#6b7280; }
+
+.qr-actions { display:flex; gap:10px; }
+.qr-actions button { flex:1; padding:14px; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; transition:all .2s; border:none; }
+.qr-btn-retry { background:#f0f1f5; color:#374151; }
+.qr-btn-retry:hover { background:#e5e7eb; }
+.qr-btn-done { background:#7c8aff; color:#fff; }
+.qr-btn-done:hover { background:#5b6bff; }
+
+/* Exit Confirm */
+.exit-confirm { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.4); z-index:400; align-items:center; justify-content:center; }
+.exit-confirm.open { display:flex; }
+.exit-confirm-box { background:#fff; border-radius:14px; padding:28px; text-align:center; max-width:340px; }
+.exit-confirm-msg { font-size:14px; color:#374151; margin-bottom:6px; line-height:1.6; }
+.exit-confirm-sub { font-size:12px; color:#9ca3af; margin-bottom:20px; }
+.exit-confirm-btns { display:flex; gap:8px; }
+.exit-confirm-btns button { flex:1; padding:10px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; border:none; }
+.ec-cancel { background:#f0f1f5; color:#374151; }
+.ec-exit { background:#dc2626; color:#fff; }
 </style>
 </head>
 <body>
@@ -249,6 +365,23 @@ body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; b
   <div class="alert-box">
     <div class="alert-msg" id="alertMsg"></div>
     <button class="alert-btn" onclick="closeAlert()">확인</button>
+  </div>
+</div>
+
+<!-- Quiz Play Panel (Action Panel) -->
+<div class="quiz-panel" id="quizPanel">
+  <div class="quiz-panel-inner" id="quizPanelInner"></div>
+</div>
+
+<!-- Exit Confirm -->
+<div class="exit-confirm" id="exitConfirm">
+  <div class="exit-confirm-box">
+    <div class="exit-confirm-msg">퀴즈를 그만할까요?</div>
+    <div class="exit-confirm-sub">풀었던 문제만큼 학습 기록이 저장됩니다.</div>
+    <div class="exit-confirm-btns">
+      <button class="ec-cancel" onclick="closeExitConfirm()">계속 풀기</button>
+      <button class="ec-exit" onclick="confirmExitQuiz()">그만하기</button>
+    </div>
   </div>
 </div>
 
@@ -791,22 +924,34 @@ function selectQuizCount(n){
 
 function startQuiz(){
   const actual = Math.min(state.selectedQuizCount, getQuizTypeCount(state.selectedQuizType));
-  if(actual < state.selectedQuizCount){
-    showAlert(`선택한 유형의 단어 수에 맞춰 ${actual}문제가 제공됩니다.`);
-  } else {
-    showAlert(`${actual}문제로 퀴즈를 시작합니다!`);
-  }
   state.lastQuizType = state.selectedQuizType;
-  closeQuizModal();
+
+  if(actual < state.selectedQuizCount){
+    // Show notice then start
+    document.getElementById('alertMsg').textContent = `선택한 유형의 단어 수에 맞춰 ${actual}문제가 제공됩니다.`;
+    document.getElementById('alertModal').classList.add('open');
+    document.getElementById('alertModal').dataset.pendingQuiz = actual;
+  } else {
+    closeQuizModal();
+    launchQuiz(actual);
+  }
 }
 
 function showAlert(msg){
   document.getElementById('alertMsg').textContent = msg;
   document.getElementById('alertModal').classList.add('open');
+  document.getElementById('alertModal').dataset.pendingQuiz = '';
 }
 
 function closeAlert(){
-  document.getElementById('alertModal').classList.remove('open');
+  const modal = document.getElementById('alertModal');
+  const pending = modal.dataset.pendingQuiz;
+  modal.classList.remove('open');
+  modal.dataset.pendingQuiz = '';
+  if(pending && +pending > 0){
+    closeQuizModal();
+    launchQuiz(+pending);
+  }
 }
 
 // Close modal on overlay click
@@ -816,6 +961,512 @@ document.getElementById('quizModal').addEventListener('click', e=>{
 document.getElementById('alertModal').addEventListener('click', e=>{
   if(e.target===document.getElementById('alertModal')) closeAlert();
 });
+
+// ============================================================
+// QUIZ ENGINE
+// ============================================================
+// Question types based on spec:
+//   영역1-1단계: English word → select Korean meaning (4-choice)
+//   영역1-2단계: English word → select Korean meaning (4-choice, harder distractors)
+//   영역2-1단계: Korean meaning → select English word (4-choice)
+//   영역2-2단계: Korean meaning → select English word (4-choice, harder)
+//   영역3-1단계: Fill blank in sentence (4-choice)
+//   영역3-2단계: Fill blank in sentence (type answer)
+//   영역4-심화: Spell the word from meaning (type full word)
+
+const Q_TYPES = [
+  {id:'e2k1', area:1, tier:1, label:'영어 → 뜻', badge:'영역1 · 1단계', cls:'type1'},
+  {id:'e2k2', area:1, tier:2, label:'영어 → 뜻 (심화)', badge:'영역1 · 2단계', cls:'type1'},
+  {id:'k2e1', area:2, tier:1, label:'뜻 → 영어', badge:'영역2 · 1단계', cls:'type2'},
+  {id:'k2e2', area:2, tier:2, label:'뜻 → 영어 (심화)', badge:'영역2 · 2단계', cls:'type2'},
+  {id:'fill1', area:3, tier:1, label:'빈칸 채우기', badge:'영역3 · 1단계', cls:'type3'},
+  {id:'fill2', area:3, tier:2, label:'빈칸 직접 입력', badge:'영역3 · 2단계', cls:'type3'},
+  {id:'spell', area:4, tier:0, label:'스펠링', badge:'영역4 · 심화', cls:'type4'},
+];
+
+// Cycle rules per status (from spec slide 10)
+const STATUS_CYCLES = {
+  unlearned: ['e2k1','k2e1','fill1'],
+  learning:  ['e2k1','k2e1','e2k2','k2e2','fill1','fill2'],
+  weak:      ['e2k1','k2e1','fill1','fill2'],
+  mastered:  ['e2k1','e2k2','k2e1','k2e2','spell'],
+};
+
+let quiz = null; // active quiz state
+
+function getQuizWords(typeId, count){
+  let pool = [];
+  switch(typeId){
+    case 'ai':
+      pool = [...words]; break;
+    case 'all':
+      pool = [...words]; break;
+    case 'studied':
+      pool = words.filter(w=>w.status!=='unlearned'); break;
+    case 'weak':
+      pool = words.filter(w=>w.status==='weak'); break;
+    case 'master':
+      pool = words.filter(w=>w.status==='mastered'); break;
+    case 'favorite':
+      pool = words.filter(w=>w.favorite); break;
+    case 'topic':
+      pool = words.filter(w=>w.topic===randomTopic); break;
+    case 'eiken5':
+      pool = words.filter(w=>w.eiken==='5급'); break;
+    case 'eiken4':
+      pool = words.filter(w=>w.eiken==='4급'); break;
+    case 'eiken3':
+      pool = words.filter(w=>w.eiken==='3급'); break;
+    default:
+      pool = [...words];
+  }
+  // Shuffle and take count
+  shuffle(pool);
+  return pool.slice(0, count);
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function pickDistractors(correctWord, field, count){
+  // Pick random words different from correct, return their [field] values
+  const others = words.filter(w=>w.id!==correctWord.id && w[field]!==correctWord[field]);
+  shuffle(others);
+  const result = others.slice(0, count).map(w=>w[field]);
+  // Ensure uniqueness
+  const unique = [...new Set(result)];
+  while(unique.length < count){
+    const more = words.filter(w=>w.id!==correctWord.id && !unique.includes(w[field]));
+    if(more.length===0) break;
+    unique.push(more[Math.floor(Math.random()*more.length)][field]);
+  }
+  return unique.slice(0, count);
+}
+
+function buildQuestion(word, qTypeId){
+  const qType = Q_TYPES.find(t=>t.id===qTypeId);
+  const q = { word, qType, answered:false, correct:false, userAnswer:null };
+
+  switch(qTypeId){
+    case 'e2k1':
+    case 'e2k2': {
+      // Show English word, pick Korean meaning
+      const distractors = pickDistractors(word, 'meaning', 3);
+      const options = shuffle([word.meaning, ...distractors]);
+      q.mode = 'choice';
+      q.prompt = word.word;
+      q.promptSub = `${word.pos.abb} ${word.eiken||''}`;
+      q.options = options;
+      q.answer = word.meaning;
+      q.instruction = '이 단어의 뜻을 고르세요';
+      break;
+    }
+    case 'k2e1':
+    case 'k2e2': {
+      // Show Korean meaning, pick English word
+      const distractors = pickDistractors(word, 'word', 3);
+      const options = shuffle([word.word, ...distractors]);
+      q.mode = 'choice';
+      q.prompt = word.meaning;
+      q.promptSub = `${word.pos.ko}`;
+      q.options = options;
+      q.answer = word.word;
+      q.instruction = '알맞은 영어 단어를 고르세요';
+      break;
+    }
+    case 'fill1': {
+      // Sentence with blank, choose from 4 words
+      const sentence = word.example || `I like ${word.word} very much.`;
+      const blanked = sentence.replace(new RegExp(word.word,'gi'), '______');
+      const distractors = pickDistractors(word, 'word', 3);
+      const options = shuffle([word.word, ...distractors]);
+      q.mode = 'fill-choice';
+      q.sentence = blanked;
+      q.options = options;
+      q.answer = word.word;
+      q.instruction = '빈칸에 들어갈 단어를 고르세요';
+      q.meaning = word.meaning;
+      break;
+    }
+    case 'fill2': {
+      // Sentence with blank, type the answer
+      const sentence = word.example || `I like ${word.word} very much.`;
+      const blanked = sentence.replace(new RegExp(word.word,'gi'), '______');
+      q.mode = 'fill-type';
+      q.sentence = blanked;
+      q.answer = word.word;
+      q.instruction = '빈칸에 들어갈 단어를 직접 입력하세요';
+      q.meaning = word.meaning;
+      q.hint = word.word[0] + '_'.repeat(word.word.length-1);
+      break;
+    }
+    case 'spell': {
+      // Show meaning, type the full English word
+      q.mode = 'spell';
+      q.prompt = word.meaning;
+      q.promptSub = `${word.pos.ko}`;
+      q.answer = word.word;
+      q.instruction = '뜻에 맞는 영어 단어를 입력하세요';
+      q.letterCount = word.word.length;
+      break;
+    }
+  }
+  return q;
+}
+
+function launchQuiz(count){
+  const quizWords = getQuizWords(state.selectedQuizType, count);
+  const questions = [];
+
+  quizWords.forEach((w, i) => {
+    const cycle = STATUS_CYCLES[w.status] || STATUS_CYCLES.learning;
+    const qTypeId = cycle[i % cycle.length];
+    questions.push(buildQuestion(w, qTypeId));
+  });
+
+  quiz = {
+    questions,
+    currentIdx: 0,
+    correctCount: 0,
+    wrongCount: 0,
+    results: [],
+    startTime: Date.now(),
+  };
+
+  document.getElementById('quizPanel').classList.add('open');
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion(){
+  const panel = document.getElementById('quizPanelInner');
+  const q = quiz.questions[quiz.currentIdx];
+  const total = quiz.questions.length;
+  const current = quiz.currentIdx + 1;
+  const pct = ((current-1)/total*100).toFixed(0);
+
+  let contentHTML = '';
+
+  // Header
+  contentHTML += `
+    <div class="qp-header">
+      <button class="qp-close" onclick="tryExitQuiz()" title="나가기">&larr;</button>
+      <div class="qp-title">단어 퀴즈</div>
+      <div class="qp-progress-text">${current} / ${total}</div>
+    </div>
+    <div class="qp-progress-bar"><div class="qp-progress-fill" style="width:${pct}%"></div></div>
+  `;
+
+  // Feedback area (hidden initially)
+  contentHTML += `<div id="qpFeedback"></div>`;
+
+  // Question Card
+  contentHTML += `<div class="qp-question-card">`;
+  contentHTML += `<span class="qp-q-type ${q.qType.cls}">${q.qType.badge}</span>`;
+
+  if(q.mode === 'choice'){
+    contentHTML += `
+      <div class="qp-q-label">${q.instruction}</div>
+      <div class="qp-q-word">${q.prompt}</div>
+      <div class="qp-q-hint">${q.promptSub}</div>
+      <button class="qp-q-sound" onclick="playSound('${q.word.word}')" title="발음 듣기">&#128266;</button>
+      <div class="qp-options" id="qpOptions">
+        ${q.options.map((o,i)=>`<button class="qp-option" data-val="${escHtml(o)}" onclick="selectOption(this)"><span class="opt-marker">${i+1}</span>${escHtml(o)}</button>`).join('')}
+      </div>
+    `;
+  } else if(q.mode === 'fill-choice'){
+    contentHTML += `
+      <div class="qp-q-label">${q.instruction}</div>
+      <div class="qp-q-sentence">${q.sentence.replace('______','<span class="blank" id="blankSpan">______</span>')}</div>
+      <div class="qp-q-hint" style="margin-bottom:16px">뜻: ${q.meaning}</div>
+      <div class="qp-options" id="qpOptions">
+        ${q.options.map((o,i)=>`<button class="qp-option" data-val="${escHtml(o)}" onclick="selectOption(this)"><span class="opt-marker">${i+1}</span>${escHtml(o)}</button>`).join('')}
+      </div>
+    `;
+  } else if(q.mode === 'fill-type'){
+    contentHTML += `
+      <div class="qp-q-label">${q.instruction}</div>
+      <div class="qp-q-sentence">${q.sentence.replace('______','<span class="blank" id="blankSpan">______</span>')}</div>
+      <div class="qp-q-hint" style="margin-bottom:16px">뜻: ${q.meaning} &nbsp;|&nbsp; 힌트: <strong>${q.hint}</strong></div>
+      <input class="qp-spell-input" id="qpInput" type="text" placeholder="단어를 입력하세요" autocomplete="off" autocapitalize="off" onkeydown="if(event.key==='Enter')submitAnswer()">
+    `;
+  } else if(q.mode === 'spell'){
+    const boxes = q.answer.split('').map((_,i)=>
+      `<span class="letter-box" id="lb${i}">${i===0?q.answer[0]:''}</span>`
+    ).join('');
+    contentHTML += `
+      <div class="qp-q-label">${q.instruction}</div>
+      <div class="qp-q-word">${q.prompt}</div>
+      <div class="qp-q-hint">${q.promptSub} &nbsp;|&nbsp; ${q.letterCount}글자</div>
+      <div class="qp-spell-hint"><div class="letter-boxes">${boxes}</div></div>
+      <div style="height:16px"></div>
+      <input class="qp-spell-input" id="qpInput" type="text" placeholder="영어 단어를 입력하세요" autocomplete="off" autocapitalize="off" onkeydown="if(event.key==='Enter')submitAnswer()" oninput="updateLetterBoxes()">
+    `;
+  }
+
+  contentHTML += `</div>`; // close question card
+
+  // Submit button
+  contentHTML += `<button class="qp-submit-btn submit" id="qpSubmitBtn" onclick="submitAnswer()" disabled>확인</button>`;
+
+  panel.innerHTML = contentHTML;
+
+  // Focus input if typing question
+  if(q.mode==='fill-type'||q.mode==='spell'){
+    setTimeout(()=>{
+      const inp = document.getElementById('qpInput');
+      if(inp) { inp.focus(); inp.addEventListener('input', ()=>{ document.getElementById('qpSubmitBtn').disabled = inp.value.trim().length===0; }); }
+    },100);
+  }
+}
+
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let selectedOptionVal = null;
+
+function selectOption(el){
+  const q = quiz.questions[quiz.currentIdx];
+  if(q.answered) return;
+  // Deselect all
+  el.parentElement.querySelectorAll('.qp-option').forEach(o=>o.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedOptionVal = el.dataset.val;
+  document.getElementById('qpSubmitBtn').disabled = false;
+}
+
+function updateLetterBoxes(){
+  const q = quiz.questions[quiz.currentIdx];
+  if(q.mode!=='spell') return;
+  const inp = document.getElementById('qpInput');
+  const val = inp.value;
+  for(let i=0;i<q.answer.length;i++){
+    const box = document.getElementById('lb'+i);
+    if(box){
+      if(i < val.length){
+        box.textContent = val[i];
+        box.classList.add('revealed');
+      } else if(i===0){
+        box.textContent = q.answer[0];
+        box.classList.remove('revealed');
+      } else {
+        box.textContent = '';
+        box.classList.remove('revealed');
+      }
+    }
+  }
+}
+
+function submitAnswer(){
+  const q = quiz.questions[quiz.currentIdx];
+  if(q.answered) return;
+
+  let userAnswer = '';
+  let isCorrect = false;
+
+  if(q.mode==='choice' || q.mode==='fill-choice'){
+    userAnswer = selectedOptionVal;
+    if(!userAnswer) return;
+    isCorrect = userAnswer === q.answer;
+  } else {
+    const inp = document.getElementById('qpInput');
+    userAnswer = (inp.value||'').trim();
+    if(!userAnswer) return;
+    isCorrect = userAnswer.toLowerCase() === q.answer.toLowerCase();
+  }
+
+  q.answered = true;
+  q.correct = isCorrect;
+  q.userAnswer = userAnswer;
+
+  if(isCorrect) quiz.correctCount++;
+  else quiz.wrongCount++;
+
+  quiz.results.push({ word:q.word, correct:isCorrect, qType:q.qType });
+
+  // Update word status in data
+  updateWordStatus(q.word, isCorrect);
+
+  // Show feedback
+  showQuizFeedback(q, isCorrect, userAnswer);
+}
+
+function showQuizFeedback(q, isCorrect, userAnswer){
+  const fb = document.getElementById('qpFeedback');
+  if(isCorrect){
+    fb.innerHTML = `<div class="qp-feedback correct"><span class="fb-icon">&#10004;</span> 정답입니다!</div>`;
+  } else {
+    fb.innerHTML = `<div class="qp-feedback wrong"><span class="fb-icon">&#10008;</span> 오답입니다. <span class="fb-answer">정답: <strong>${q.answer}</strong></span></div>`;
+  }
+
+  // Mark options
+  if(q.mode==='choice'||q.mode==='fill-choice'){
+    const opts = document.querySelectorAll('#qpOptions .qp-option');
+    opts.forEach(o=>{
+      o.classList.add('disabled');
+      if(o.dataset.val===q.answer) o.classList.add('correct');
+      else if(o.dataset.val===userAnswer && !isCorrect) o.classList.add('wrong');
+    });
+    // Update blank text for fill-choice
+    if(q.mode==='fill-choice'){
+      const blank = document.getElementById('blankSpan');
+      if(blank) blank.textContent = q.answer;
+    }
+  } else {
+    const inp = document.getElementById('qpInput');
+    if(inp){
+      inp.disabled = true;
+      inp.classList.add(isCorrect?'correct':'wrong');
+    }
+    // Reveal full word in letter boxes
+    if(q.mode==='spell'){
+      for(let i=0;i<q.answer.length;i++){
+        const box = document.getElementById('lb'+i);
+        if(box){ box.textContent = q.answer[i]; box.classList.add('revealed'); }
+      }
+    }
+  }
+
+  // Change button to "next"
+  const btn = document.getElementById('qpSubmitBtn');
+  const isLast = quiz.currentIdx >= quiz.questions.length - 1;
+  btn.className = 'qp-submit-btn next';
+  btn.disabled = false;
+  btn.textContent = isLast ? '결과 보기' : '다음 문제';
+  btn.onclick = isLast ? showQuizResult : nextQuestion;
+}
+
+function nextQuestion(){
+  quiz.currentIdx++;
+  selectedOptionVal = null;
+  renderQuizQuestion();
+}
+
+function updateWordStatus(word, isCorrect){
+  // Simple status update logic per spec
+  word.totalAttempts = (word.totalAttempts||0)+1;
+  const attempts = word.totalAttempts;
+  const prevCorrect = Math.round((word.accuracy||0)/100 * (attempts-1));
+  const newCorrect = prevCorrect + (isCorrect?1:0);
+  word.accuracy = attempts>0 ? Math.round(newCorrect/attempts*100) : 0;
+
+  // Consecutive correct tracking
+  if(!word._streak) word._streak = 0;
+  if(isCorrect) word._streak++;
+  else word._streak = 0;
+  word._lastCorrect = isCorrect;
+
+  // Determine new status per spec rules
+  if(attempts===0){ word.status='unlearned'; }
+  else if(attempts>=3 && !isCorrect && word.accuracy<=40){ word.status='weak'; }
+  else if(attempts>=3 && word._streak>=3 && word.accuracy>=50){ word.status='mastered'; }
+  else { word.status='learning'; }
+}
+
+// ============================================================
+// QUIZ RESULT SCREEN
+// ============================================================
+function showQuizResult(){
+  const panel = document.getElementById('quizPanelInner');
+  const total = quiz.questions.length;
+  const correct = quiz.correctCount;
+  const wrong = quiz.wrongCount;
+  const accuracy = total>0 ? Math.round(correct/total*100) : 0;
+  const elapsed = Math.round((Date.now()-quiz.startTime)/1000);
+  const minutes = Math.floor(elapsed/60);
+  const seconds = elapsed%60;
+
+  let emoji = '🎉';
+  let title = '훌륭해요!';
+  if(accuracy>=90){ emoji='🏆'; title='완벽해요!'; }
+  else if(accuracy>=70){ emoji='🎉'; title='훌륭해요!'; }
+  else if(accuracy>=50){ emoji='💪'; title='좋은 시작이에요!'; }
+  else { emoji='📚'; title='다시 도전해봐요!'; }
+
+  let wordListHTML = quiz.results.map(r=>{
+    const icon = r.correct ? '&#10004;' : '&#10008;';
+    const cls = r.correct ? 'correct' : 'wrong';
+    return `<div class="qr-word-row ${cls}"><span class="qr-icon">${icon}</span><span class="qr-w">${r.word.word}</span><span class="qr-m">${r.word.meaning}</span></div>`;
+  }).join('');
+
+  panel.innerHTML = `
+    <div class="qp-header">
+      <div></div>
+      <div class="qp-title">퀴즈 결과</div>
+      <div></div>
+    </div>
+    <div class="qr-card">
+      <div class="qr-emoji">${emoji}</div>
+      <div class="qr-title">${title}</div>
+      <div class="qr-subtitle">${total}문제 중 ${correct}개 정답 &nbsp;|&nbsp; ${minutes>0?minutes+'분 ':''}${seconds}초</div>
+
+      <div class="qr-stats">
+        <div class="qr-stat"><div class="qr-stat-value green">${correct}</div><div class="qr-stat-label">정답</div></div>
+        <div class="qr-stat"><div class="qr-stat-value red">${wrong}</div><div class="qr-stat-label">오답</div></div>
+        <div class="qr-stat"><div class="qr-stat-value blue">${accuracy}%</div><div class="qr-stat-label">정답률</div></div>
+      </div>
+
+      <div class="qr-accuracy-bar"><div class="qr-accuracy-fill" style="width:0%"></div></div>
+
+      <div class="qr-word-list">
+        <div class="qr-word-list-title">문제별 결과</div>
+        ${wordListHTML}
+      </div>
+
+      <div class="qr-actions">
+        <button class="qr-btn-retry" onclick="retryQuiz()">다시 풀기</button>
+        <button class="qr-btn-done" onclick="finishQuiz()">단어장으로</button>
+      </div>
+    </div>
+  `;
+
+  // Animate accuracy bar
+  setTimeout(()=>{
+    const fill = panel.querySelector('.qr-accuracy-fill');
+    if(fill) fill.style.width = accuracy+'%';
+  }, 100);
+}
+
+function retryQuiz(){
+  closeQuizPanel();
+  openQuizModal();
+}
+
+function finishQuiz(){
+  closeQuizPanel();
+  // Refresh word list and chart
+  renderTabs();
+  renderWordList();
+  // Update today's chart data
+  chartData[chartData.length-1].count += quiz.questions.length;
+  renderChart();
+}
+
+function closeQuizPanel(){
+  document.getElementById('quizPanel').classList.remove('open');
+  quiz = null;
+  selectedOptionVal = null;
+}
+
+function tryExitQuiz(){
+  document.getElementById('exitConfirm').classList.add('open');
+}
+function closeExitConfirm(){
+  document.getElementById('exitConfirm').classList.remove('open');
+}
+function confirmExitQuiz(){
+  closeExitConfirm();
+  closeQuizPanel();
+  renderTabs();
+  renderWordList();
+  if(quiz && quiz.results.length>0){
+    chartData[chartData.length-1].count += quiz.results.length;
+    renderChart();
+  }
+}
 
 // ============================================================
 // INIT
