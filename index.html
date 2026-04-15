@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TDEA 단어장</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; background:#f5f6fa; color:#222; }
+
+/* Layout */
+.app { display:flex; min-height:100vh; }
+.lnb { width:220px; background:#1a1f36; color:#fff; padding:20px 0; flex-shrink:0; }
+.lnb-logo { padding:0 20px 24px; font-size:18px; font-weight:700; color:#7c8aff; }
+.lnb-menu { list-style:none; }
+.lnb-menu li { padding:12px 20px; cursor:pointer; font-size:14px; color:#9ca3af; transition:all .2s; }
+.lnb-menu li:hover { background:rgba(255,255,255,.06); color:#fff; }
+.lnb-menu li.active { background:rgba(124,138,255,.15); color:#7c8aff; border-left:3px solid #7c8aff; }
+.main { flex:1; padding:28px 32px; overflow-y:auto; max-height:100vh; }
+
+/* Section Cards */
+.section-card { background:#fff; border-radius:12px; padding:24px; margin-bottom:20px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.section-title { font-size:15px; font-weight:700; color:#1a1f36; margin-bottom:4px; }
+.section-desc { font-size:13px; color:#6b7280; }
+
+/* 7-day Chart */
+.chart-area { position:relative; height:160px; margin-top:16px; }
+.chart-svg { width:100%; height:100%; }
+.chart-bar { fill:#7c8aff; rx:4; transition:fill .2s; cursor:pointer; }
+.chart-bar:hover { fill:#5b6bff; }
+.chart-bar.today { fill:#5b6bff; }
+.chart-label { font-size:11px; fill:#9ca3af; text-anchor:middle; }
+.chart-label.today { fill:#1a1f36; font-weight:700; }
+.chart-value { font-size:11px; fill:#7c8aff; text-anchor:middle; font-weight:600; }
+.chart-tooltip { position:absolute; background:#1a1f36; color:#fff; padding:8px 12px; border-radius:8px; font-size:12px; pointer-events:none; opacity:0; transition:opacity .15s; z-index:10; white-space:nowrap; }
+.chart-tooltip::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:5px solid transparent; border-top-color:#1a1f36; }
+.empty-chart { text-align:center; padding:40px 0; color:#9ca3af; font-size:14px; line-height:1.8; }
+
+/* Quiz Button */
+.quiz-section { display:flex; align-items:center; justify-content:space-between; }
+.quiz-btn { background:#7c8aff; color:#fff; border:none; padding:10px 24px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:background .2s; }
+.quiz-btn:hover { background:#5b6bff; }
+
+/* Tabs */
+.tabs { display:flex; gap:4px; margin-bottom:16px; border-bottom:2px solid #e5e7eb; }
+.tab { padding:10px 16px; cursor:pointer; font-size:13px; font-weight:600; color:#9ca3af; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .2s; white-space:nowrap; }
+.tab:hover { color:#6b7280; }
+.tab.active { color:#7c8aff; border-bottom-color:#7c8aff; }
+.tab .count { font-size:12px; font-weight:400; margin-left:4px; color:#b0b7c3; }
+.tab.active .count { color:#7c8aff; }
+
+/* Filter Area */
+.filter-toggle { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.filter-toggle-btn { background:#f0f1f5; border:1px solid #e5e7eb; padding:6px 14px; border-radius:6px; font-size:13px; cursor:pointer; color:#6b7280; transition:all .2s; }
+.filter-toggle-btn:hover { background:#e5e7eb; }
+.filter-toggle-btn.open { background:#7c8aff; color:#fff; border-color:#7c8aff; }
+.filter-reset { background:none; border:1px solid #d1d5db; padding:5px 12px; border-radius:6px; font-size:12px; cursor:pointer; color:#9ca3af; }
+.filter-reset:hover { border-color:#7c8aff; color:#7c8aff; }
+
+.filter-panel { display:none; background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:16px; margin-bottom:16px; }
+.filter-panel.open { display:block; }
+.filter-group { margin-bottom:14px; }
+.filter-group:last-child { margin-bottom:0; }
+.filter-group-title { font-size:13px; font-weight:700; color:#374151; margin-bottom:8px; }
+.filter-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.filter-chip { padding:5px 14px; border-radius:20px; border:1px solid #d1d5db; font-size:12px; cursor:pointer; color:#6b7280; background:#fff; transition:all .2s; user-select:none; }
+.filter-chip:hover { border-color:#7c8aff; }
+.filter-chip.selected { background:#7c8aff; color:#fff; border-color:#7c8aff; }
+
+/* Word List Header */
+.word-list-header { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:4px; }
+.word-list-title { font-size:14px; font-weight:700; color:#1a1f36; }
+.word-list-title .filter-info { color:#7c8aff; font-weight:500; }
+.word-list-count { font-size:13px; color:#9ca3af; }
+
+/* Word Cards */
+.word-cards-container { display:flex; gap:12px; }
+.word-cards { flex:1; }
+.word-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px 16px; margin-bottom:8px; transition:box-shadow .2s; }
+.word-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.08); }
+.word-card-top { display:flex; align-items:center; justify-content:space-between; }
+.word-card-left { display:flex; align-items:center; gap:10px; flex:1; }
+.word-entry { font-size:16px; font-weight:700; color:#1a1f36; }
+.word-meaning { font-size:13px; color:#6b7280; margin-left:4px; }
+.word-sound-btn { background:none; border:none; cursor:pointer; font-size:16px; color:#9ca3af; padding:2px; }
+.word-sound-btn:hover { color:#7c8aff; }
+.word-card-right { display:flex; align-items:center; gap:8px; }
+.word-fav-btn { background:none; border:none; cursor:pointer; font-size:18px; color:#d1d5db; transition:color .2s; }
+.word-fav-btn.active { color:#f43f5e; }
+.word-fav-btn:hover { color:#f43f5e; }
+.word-expand-btn { background:none; border:none; cursor:pointer; font-size:14px; color:#9ca3af; transition:transform .2s; }
+.word-expand-btn.open { transform:rotate(180deg); }
+
+.word-meta { display:flex; align-items:center; gap:6px; margin-top:6px; flex-wrap:wrap; }
+.badge { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+.badge-pos { background:#f0fdf4; color:#16a34a; }
+.badge-eiken { background:#fef3c7; color:#d97706; }
+.badge-topic { background:#ede9fe; color:#7c3aed; }
+.badge-status { font-size:11px; font-weight:600; padding:2px 8px; border-radius:10px; }
+.badge-status.unlearned { background:#f3f4f6; color:#9ca3af; }
+.badge-status.learning { background:#dbeafe; color:#2563eb; }
+.badge-status.weak { background:#fee2e2; color:#dc2626; }
+.badge-status.mastered { background:#d1fae5; color:#059669; }
+
+.word-example { display:none; margin-top:10px; padding:10px 14px; background:#f9fafb; border-radius:8px; font-size:13px; color:#4b5563; font-style:italic; border-left:3px solid #7c8aff; }
+.word-example.open { display:block; }
+
+/* Alphabet Index */
+.alpha-index { display:flex; flex-direction:column; align-items:center; gap:1px; padding:4px 6px; background:#fff; border-radius:10px; border:1px solid #e5e7eb; position:sticky; top:0; height:fit-content; }
+.alpha-btn { width:24px; height:22px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:#9ca3af; cursor:pointer; border-radius:4px; border:none; background:none; transition:all .15s; }
+.alpha-btn:hover { background:#ede9fe; color:#7c8aff; }
+.alpha-btn.active { background:#7c8aff; color:#fff; }
+.alpha-btn.disabled { color:#e5e7eb; cursor:default; pointer-events:none; }
+
+/* Loading */
+.loading-text { text-align:center; padding:20px; color:#9ca3af; font-size:13px; }
+
+/* Empty State */
+.empty-state { text-align:center; padding:48px 20px; color:#9ca3af; font-size:14px; }
+
+/* Modal Overlay */
+.modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.45); z-index:100; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:#fff; border-radius:16px; width:520px; max-height:85vh; overflow-y:auto; padding:28px; position:relative; }
+.modal-close { position:absolute; top:16px; right:16px; background:none; border:none; font-size:20px; cursor:pointer; color:#9ca3af; }
+.modal-close:hover { color:#374151; }
+.modal-title { font-size:18px; font-weight:700; color:#1a1f36; margin-bottom:4px; }
+.modal-subtitle { font-size:13px; color:#6b7280; margin-bottom:20px; }
+
+.quiz-type-section-title { font-size:13px; font-weight:600; color:#374151; margin-bottom:10px; }
+.quiz-type-btn { display:flex; align-items:center; gap:12px; width:100%; padding:12px 14px; border:1.5px solid #e5e7eb; border-radius:10px; margin-bottom:8px; cursor:pointer; background:#fff; text-align:left; transition:all .2s; position:relative; }
+.quiz-type-btn:hover { border-color:#7c8aff; }
+.quiz-type-btn.selected { border-color:#7c8aff; background:#f5f3ff; }
+.quiz-type-btn.disabled { opacity:.45; cursor:not-allowed; pointer-events:none; }
+.quiz-type-btn.featured { border-width:2px; border-color:#7c8aff; background:linear-gradient(135deg,#f5f3ff,#ede9fe); }
+.quiz-type-btn.featured.selected { background:linear-gradient(135deg,#ede9fe,#ddd6fe); }
+.quiz-type-icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; background:#f0f1f5; flex-shrink:0; }
+.quiz-type-info { flex:1; }
+.quiz-type-name { font-size:14px; font-weight:600; color:#1a1f36; }
+.quiz-type-desc { font-size:12px; color:#9ca3af; margin-top:2px; }
+.quiz-type-recent { position:absolute; top:8px; right:10px; background:#fef3c7; color:#d97706; font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; }
+
+.quiz-count-section { margin-top:20px; }
+.quiz-count-label { font-size:13px; font-weight:600; color:#374151; margin-bottom:8px; }
+.quiz-count-sublabel { font-size:12px; color:#9ca3af; font-weight:400; }
+.quiz-count-options { display:flex; gap:8px; }
+.quiz-count-btn { flex:1; padding:10px; border:1.5px solid #e5e7eb; border-radius:8px; text-align:center; cursor:pointer; font-size:14px; font-weight:600; color:#6b7280; background:#fff; transition:all .2s; }
+.quiz-count-btn:hover { border-color:#7c8aff; }
+.quiz-count-btn.selected { border-color:#7c8aff; background:#7c8aff; color:#fff; }
+
+.quiz-start-btn { width:100%; margin-top:20px; padding:14px; border:none; border-radius:10px; background:#7c8aff; color:#fff; font-size:15px; font-weight:700; cursor:pointer; transition:background .2s; }
+.quiz-start-btn:hover { background:#5b6bff; }
+
+/* Alert Modal */
+.alert-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.35); z-index:200; align-items:center; justify-content:center; }
+.alert-modal.open { display:flex; }
+.alert-box { background:#fff; border-radius:14px; padding:28px; text-align:center; max-width:360px; }
+.alert-msg { font-size:14px; color:#374151; margin-bottom:20px; line-height:1.6; }
+.alert-btn { padding:10px 32px; border:none; border-radius:8px; background:#7c8aff; color:#fff; font-size:14px; font-weight:600; cursor:pointer; }
+
+/* Alphabet group header */
+.alpha-group-header { font-size:13px; font-weight:700; color:#7c8aff; padding:8px 4px 4px; margin-top:8px; }
+.alpha-group-header:first-child { margin-top:0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- LNB -->
+  <nav class="lnb">
+    <div class="lnb-logo">TDEA</div>
+    <ul class="lnb-menu">
+      <li>홈</li>
+      <li>오늘의 학습</li>
+      <li class="active">단어장</li>
+      <li>주간 리그</li>
+      <li>마이페이지</li>
+    </ul>
+  </nav>
+
+  <!-- Main -->
+  <div class="main" id="mainArea">
+    <!-- 7-day Chart -->
+    <div class="section-card">
+      <div class="section-title">7일 학습 현황</div>
+      <div id="chartArea"></div>
+    </div>
+
+    <!-- Quiz Section -->
+    <div class="section-card quiz-section">
+      <div>
+        <div class="section-title">단어 퀴즈</div>
+        <div class="section-desc">지금 나에게 필요한 단어로 어휘력을 키워보세요.</div>
+      </div>
+      <button class="quiz-btn" onclick="openQuizModal()">&#9654; 퀴즈 풀기</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="section-card" style="padding-bottom:0;">
+      <div class="tabs" id="tabsArea"></div>
+    </div>
+
+    <!-- Filter + Word List -->
+    <div class="section-card">
+      <div class="filter-toggle">
+        <button class="filter-toggle-btn" id="filterToggleBtn" onclick="toggleFilter()">필터 보기</button>
+        <button class="filter-reset" onclick="resetFilters()">초기화</button>
+      </div>
+      <div class="filter-panel" id="filterPanel">
+        <div class="filter-group">
+          <div class="filter-group-title">영검 급수별 보기</div>
+          <div class="filter-chips" id="eikenChips"></div>
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-title">주제별 보기</div>
+          <div class="filter-chips" id="topicChips"></div>
+        </div>
+      </div>
+
+      <div class="word-list-header">
+        <div class="word-list-title" id="wordListTitle">학습한 단어</div>
+        <div class="word-list-count" id="wordListCount">0개</div>
+      </div>
+
+      <div class="word-cards-container">
+        <div class="word-cards" id="wordCards"></div>
+        <div class="alpha-index" id="alphaIndex"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quiz Modal -->
+<div class="modal-overlay" id="quizModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeQuizModal()">&times;</button>
+    <div class="modal-title">단어 퀴즈</div>
+    <div class="modal-subtitle">어떤 단어로 퀴즈를 풀까요?</div>
+    <div id="quizTypeList"></div>
+    <div class="quiz-count-section">
+      <div class="quiz-count-label">몇 문제를 풀까요? <span class="quiz-count-sublabel">(가능한 수만큼 출제)</span></div>
+      <div class="quiz-count-options" id="quizCountOptions"></div>
+    </div>
+    <button class="quiz-start-btn" onclick="startQuiz()">&#9654; 퀴즈 시작하기</button>
+  </div>
+</div>
+
+<!-- Alert Modal -->
+<div class="alert-modal" id="alertModal">
+  <div class="alert-box">
+    <div class="alert-msg" id="alertMsg"></div>
+    <button class="alert-btn" onclick="closeAlert()">확인</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const TOPICS = ['인물','학교 생활','일상 생활','일상 사물','문화와 예술','사회','과학','음식과 건강','자연','여가 활동'];
+const EIKEN_LEVELS = ['5급','4급','3급'];
+const STATUSES = ['unlearned','learning','weak','mastered'];
+const STATUS_LABELS = { unlearned:'미학습', learning:'학습 중', weak:'취약', mastered:'마스터' };
+const POS_LIST = [
+  {en:'noun',ko:'명사',abb:'n.'},
+  {en:'verb',ko:'동사',abb:'v.'},
+  {en:'adjective',ko:'형용사',abb:'adj.'},
+  {en:'adverb',ko:'부사',abb:'adv.'},
+  {en:'preposition',ko:'전치사',abb:'prep.'}
+];
+
+const RAW_WORDS = [
+  {w:'apple',m:'사과',pos:0,eiken:'5급',topic:'음식과 건강',status:'mastered',fav:false,ex:'I eat an apple every day.'},
+  {w:'animal',m:'동물',pos:0,eiken:'5급',topic:'자연',status:'learning',fav:true,ex:'My favorite animal is a dog.'},
+  {w:'afternoon',m:'오후',pos:0,eiken:'5급',topic:'일상 생활',status:'learning',fav:false,ex:'I study in the afternoon.'},
+  {w:'adventure',m:'모험',pos:0,eiken:'4급',topic:'여가 활동',status:'unlearned',fav:false,ex:'We went on an adventure.'},
+  {w:'artist',m:'예술가',pos:0,eiken:'4급',topic:'문화와 예술',status:'learning',fav:false,ex:'She is a famous artist.'},
+  {w:'ancient',m:'고대의',pos:2,eiken:'3급',topic:'사회',status:'weak',fav:false,ex:'They found an ancient temple.'},
+  {w:'achieve',m:'달성하다',pos:1,eiken:'3급',topic:'학교 생활',status:'unlearned',fav:false,ex:'I want to achieve my goals.'},
+  {w:'book',m:'책',pos:0,eiken:'5급',topic:'학교 생활',status:'mastered',fav:true,ex:'I read a book every night.'},
+  {w:'beautiful',m:'아름다운',pos:2,eiken:'5급',topic:'자연',status:'learning',fav:false,ex:'The garden is beautiful.'},
+  {w:'breakfast',m:'아침 식사',pos:0,eiken:'5급',topic:'음식과 건강',status:'learning',fav:false,ex:'I had breakfast at 7.'},
+  {w:'bridge',m:'다리',pos:0,eiken:'4급',topic:'사회',status:'weak',fav:false,ex:'We crossed the bridge.'},
+  {w:'brilliant',m:'훌륭한',pos:2,eiken:'3급',topic:'인물',status:'unlearned',fav:false,ex:'She has a brilliant mind.'},
+  {w:'brave',m:'용감한',pos:2,eiken:'4급',topic:'인물',status:'learning',fav:true,ex:'The brave knight saved the village.'},
+  {w:'basket',m:'바구니',pos:0,eiken:'5급',topic:'일상 사물',status:'mastered',fav:false,ex:'Put the fruit in the basket.'},
+  {w:'camera',m:'카메라',pos:0,eiken:'5급',topic:'일상 사물',status:'learning',fav:false,ex:'I bought a new camera.'},
+  {w:'culture',m:'문화',pos:0,eiken:'4급',topic:'문화와 예술',status:'learning',fav:false,ex:'Japanese culture is unique.'},
+  {w:'celebrate',m:'축하하다',pos:1,eiken:'4급',topic:'사회',status:'weak',fav:false,ex:'We celebrate her birthday.'},
+  {w:'concert',m:'콘서트',pos:0,eiken:'4급',topic:'문화와 예술',status:'mastered',fav:true,ex:'I went to a concert last night.'},
+  {w:'courage',m:'용기',pos:0,eiken:'3급',topic:'인물',status:'unlearned',fav:false,ex:'He showed great courage.'},
+  {w:'challenge',m:'도전',pos:0,eiken:'3급',topic:'학교 생활',status:'learning',fav:false,ex:'This test is a big challenge.'},
+  {w:'curious',m:'호기심 많은',pos:2,eiken:'3급',topic:'인물',status:'weak',fav:false,ex:'The curious cat explored the room.'},
+  {w:'clock',m:'시계',pos:0,eiken:'5급',topic:'일상 사물',status:'mastered',fav:false,ex:'The clock shows 3 pm.'},
+  {w:'doctor',m:'의사',pos:0,eiken:'5급',topic:'인물',status:'mastered',fav:false,ex:'She wants to be a doctor.'},
+  {w:'delicious',m:'맛있는',pos:2,eiken:'5급',topic:'음식과 건강',status:'learning',fav:true,ex:'This cake is delicious.'},
+  {w:'different',m:'다른',pos:2,eiken:'4급',topic:'사회',status:'learning',fav:false,ex:'We have different opinions.'},
+  {w:'discover',m:'발견하다',pos:1,eiken:'3급',topic:'과학',status:'unlearned',fav:false,ex:'Scientists discover new species.'},
+  {w:'danger',m:'위험',pos:0,eiken:'4급',topic:'자연',status:'weak',fav:false,ex:'There is danger in the forest.'},
+  {w:'dream',m:'꿈',pos:0,eiken:'5급',topic:'일상 생활',status:'learning',fav:false,ex:'I had a nice dream last night.'},
+  {w:'environment',m:'환경',pos:0,eiken:'3급',topic:'자연',status:'learning',fav:false,ex:'We must protect the environment.'},
+  {w:'exercise',m:'운동',pos:0,eiken:'4급',topic:'음식과 건강',status:'learning',fav:false,ex:'Exercise is good for health.'},
+  {w:'enjoy',m:'즐기다',pos:1,eiken:'5급',topic:'여가 활동',status:'mastered',fav:true,ex:'I enjoy playing soccer.'},
+  {w:'excellent',m:'훌륭한',pos:2,eiken:'4급',topic:'학교 생활',status:'learning',fav:false,ex:'She got excellent grades.'},
+  {w:'explore',m:'탐험하다',pos:1,eiken:'3급',topic:'여가 활동',status:'unlearned',fav:false,ex:'We explored the cave.'},
+  {w:'energy',m:'에너지',pos:0,eiken:'4급',topic:'과학',status:'weak',fav:false,ex:'Solar energy is renewable.'},
+  {w:'evening',m:'저녁',pos:0,eiken:'5급',topic:'일상 생활',status:'learning',fav:false,ex:'I study every evening.'},
+  {w:'flower',m:'꽃',pos:0,eiken:'5급',topic:'자연',status:'mastered',fav:false,ex:'The flower is blooming.'},
+  {w:'friend',m:'친구',pos:0,eiken:'5급',topic:'인물',status:'mastered',fav:true,ex:'She is my best friend.'},
+  {w:'festival',m:'축제',pos:0,eiken:'4급',topic:'문화와 예술',status:'learning',fav:false,ex:'The music festival was fun.'},
+  {w:'forest',m:'숲',pos:0,eiken:'4급',topic:'자연',status:'learning',fav:false,ex:'We walked through the forest.'},
+  {w:'furniture',m:'가구',pos:0,eiken:'3급',topic:'일상 사물',status:'unlearned',fav:false,ex:'We bought new furniture.'},
+  {w:'famous',m:'유명한',pos:2,eiken:'4급',topic:'인물',status:'learning',fav:false,ex:'He is a famous singer.'},
+  {w:'garden',m:'정원',pos:0,eiken:'5급',topic:'자연',status:'mastered',fav:false,ex:'We grow vegetables in the garden.'},
+  {w:'generous',m:'관대한',pos:2,eiken:'3급',topic:'인물',status:'weak',fav:false,ex:'She is a generous person.'},
+  {w:'geography',m:'지리학',pos:0,eiken:'3급',topic:'학교 생활',status:'learning',fav:false,ex:'I study geography at school.'},
+  {w:'guitar',m:'기타',pos:0,eiken:'4급',topic:'문화와 예술',status:'learning',fav:true,ex:'He plays the guitar well.'},
+  {w:'game',m:'게임',pos:0,eiken:'5급',topic:'여가 활동',status:'mastered',fav:false,ex:'Let\'s play a board game.'},
+  {w:'hospital',m:'병원',pos:0,eiken:'5급',topic:'사회',status:'learning',fav:false,ex:'She went to the hospital.'},
+  {w:'history',m:'역사',pos:0,eiken:'4급',topic:'사회',status:'learning',fav:false,ex:'I love learning history.'},
+  {w:'honest',m:'정직한',pos:2,eiken:'4급',topic:'인물',status:'mastered',fav:false,ex:'He is an honest person.'},
+  {w:'healthy',m:'건강한',pos:2,eiken:'4급',topic:'음식과 건강',status:'learning',fav:false,ex:'Eating vegetables is healthy.'},
+  {w:'homework',m:'숙제',pos:0,eiken:'5급',topic:'학교 생활',status:'mastered',fav:false,ex:'I finished my homework.'},
+  {w:'imagine',m:'상상하다',pos:1,eiken:'4급',topic:'문화와 예술',status:'learning',fav:false,ex:'Imagine a world of peace.'},
+  {w:'important',m:'중요한',pos:2,eiken:'4급',topic:'학교 생활',status:'learning',fav:false,ex:'Education is important.'},
+  {w:'island',m:'섬',pos:0,eiken:'4급',topic:'자연',status:'weak',fav:false,ex:'We visited a tropical island.'},
+  {w:'interesting',m:'흥미로운',pos:2,eiken:'4급',topic:'여가 활동',status:'learning',fav:false,ex:'This book is interesting.'},
+  {w:'invent',m:'발명하다',pos:1,eiken:'3급',topic:'과학',status:'unlearned',fav:false,ex:'Edison invented the light bulb.'},
+  {w:'jacket',m:'재킷',pos:0,eiken:'5급',topic:'일상 사물',status:'learning',fav:false,ex:'Wear your jacket outside.'},
+  {w:'journey',m:'여행',pos:0,eiken:'4급',topic:'여가 활동',status:'learning',fav:false,ex:'We had a long journey.'},
+  {w:'justice',m:'정의',pos:0,eiken:'3급',topic:'사회',status:'unlearned',fav:false,ex:'Justice must be served.'},
+  {w:'kitchen',m:'부엌',pos:0,eiken:'5급',topic:'일상 생활',status:'mastered',fav:false,ex:'She cooks in the kitchen.'},
+  {w:'knowledge',m:'지식',pos:0,eiken:'3급',topic:'학교 생활',status:'learning',fav:false,ex:'Knowledge is power.'},
+  {w:'kind',m:'친절한',pos:2,eiken:'5급',topic:'인물',status:'mastered',fav:true,ex:'She is very kind.'},
+  {w:'library',m:'도서관',pos:0,eiken:'5급',topic:'학교 생활',status:'mastered',fav:false,ex:'I go to the library often.'},
+  {w:'language',m:'언어',pos:0,eiken:'4급',topic:'학교 생활',status:'learning',fav:false,ex:'Learning a new language is fun.'},
+  {w:'landscape',m:'풍경',pos:0,eiken:'3급',topic:'자연',status:'unlearned',fav:false,ex:'The landscape was breathtaking.'},
+  {w:'lucky',m:'운이 좋은',pos:2,eiken:'5급',topic:'일상 생활',status:'learning',fav:false,ex:'I feel lucky today.'},
+  {w:'mountain',m:'산',pos:0,eiken:'5급',topic:'자연',status:'mastered',fav:false,ex:'We climbed the mountain.'},
+  {w:'museum',m:'박물관',pos:0,eiken:'4급',topic:'문화와 예술',status:'learning',fav:false,ex:'We visited the art museum.'},
+  {w:'medicine',m:'약, 의학',pos:0,eiken:'4급',topic:'음식과 건강',status:'weak',fav:false,ex:'Take your medicine after meals.'},
+  {w:'mystery',m:'미스터리',pos:0,eiken:'3급',topic:'여가 활동',status:'unlearned',fav:false,ex:'It remains a mystery.'},
+  {w:'modern',m:'현대의',pos:2,eiken:'4급',topic:'사회',status:'learning',fav:false,ex:'This is a modern building.'},
+  {w:'notebook',m:'공책',pos:0,eiken:'5급',topic:'학교 생활',status:'mastered',fav:false,ex:'Write it in your notebook.'},
+  {w:'nature',m:'자연',pos:0,eiken:'4급',topic:'자연',status:'learning',fav:false,ex:'Nature is beautiful.'},
+  {w:'nervous',m:'긴장한',pos:2,eiken:'4급',topic:'인물',status:'weak',fav:false,ex:'I was nervous before the test.'},
+  {w:'necessary',m:'필요한',pos:2,eiken:'3급',topic:'일상 생활',status:'unlearned',fav:false,ex:'Sleep is necessary for health.'},
+  {w:'ocean',m:'바다',pos:0,eiken:'4급',topic:'자연',status:'learning',fav:false,ex:'The ocean is very deep.'},
+  {w:'opinion',m:'의견',pos:0,eiken:'3급',topic:'사회',status:'learning',fav:false,ex:'Everyone has their own opinion.'},
+  {w:'opportunity',m:'기회',pos:0,eiken:'3급',topic:'사회',status:'unlearned',fav:false,ex:'Don\'t miss this opportunity.'},
+  {w:'orange',m:'오렌지',pos:0,eiken:'5급',topic:'음식과 건강',status:'mastered',fav:false,ex:'I drink orange juice.'},
+  {w:'pencil',m:'연필',pos:0,eiken:'5급',topic:'일상 사물',status:'mastered',fav:false,ex:'I write with a pencil.'},
+  {w:'picture',m:'그림, 사진',pos:0,eiken:'5급',topic:'문화와 예술',status:'learning',fav:false,ex:'She drew a beautiful picture.'},
+  {w:'planet',m:'행성',pos:0,eiken:'4급',topic:'과학',status:'learning',fav:false,ex:'Earth is a beautiful planet.'},
+  {w:'polite',m:'예의 바른',pos:2,eiken:'4급',topic:'인물',status:'learning',fav:false,ex:'She is very polite.'},
+  {w:'population',m:'인구',pos:0,eiken:'3급',topic:'사회',status:'unlearned',fav:false,ex:'The world population is growing.'},
+  {w:'practice',m:'연습하다',pos:1,eiken:'4급',topic:'학교 생활',status:'learning',fav:false,ex:'Practice makes perfect.'},
+  {w:'quiet',m:'조용한',pos:2,eiken:'5급',topic:'일상 생활',status:'mastered',fav:false,ex:'The library is quiet.'},
+  {w:'question',m:'질문',pos:0,eiken:'5급',topic:'학교 생활',status:'learning',fav:false,ex:'Can I ask a question?'},
+  {w:'restaurant',m:'식당',pos:0,eiken:'4급',topic:'음식과 건강',status:'learning',fav:false,ex:'We ate at a restaurant.'},
+  {w:'remember',m:'기억하다',pos:1,eiken:'4급',topic:'학교 생활',status:'learning',fav:false,ex:'I remember that day clearly.'},
+  {w:'research',m:'연구',pos:0,eiken:'3급',topic:'과학',status:'learning',fav:false,ex:'Scientific research is vital.'},
+  {w:'river',m:'강',pos:0,eiken:'5급',topic:'자연',status:'mastered',fav:false,ex:'We swam in the river.'},
+  {w:'robot',m:'로봇',pos:0,eiken:'4급',topic:'과학',status:'unlearned',fav:false,ex:'The robot can dance.'},
+  {w:'school',m:'학교',pos:0,eiken:'5급',topic:'학교 생활',status:'mastered',fav:false,ex:'I go to school every day.'},
+  {w:'science',m:'과학',pos:0,eiken:'5급',topic:'과학',status:'learning',fav:false,ex:'I love science class.'},
+  {w:'season',m:'계절',pos:0,eiken:'5급',topic:'자연',status:'learning',fav:false,ex:'Spring is my favorite season.'},
+  {w:'society',m:'사회',pos:0,eiken:'3급',topic:'사회',status:'unlearned',fav:false,ex:'We live in a diverse society.'},
+  {w:'success',m:'성공',pos:0,eiken:'3급',topic:'학교 생활',status:'weak',fav:false,ex:'Hard work leads to success.'},
+  {w:'swimming',m:'수영',pos:0,eiken:'5급',topic:'여가 활동',status:'mastered',fav:true,ex:'I go swimming every weekend.'},
+  {w:'stadium',m:'경기장',pos:0,eiken:'4급',topic:'여가 활동',status:'learning',fav:false,ex:'The stadium was full.'},
+  {w:'teacher',m:'선생님',pos:0,eiken:'5급',topic:'인물',status:'mastered',fav:false,ex:'My teacher is very kind.'},
+  {w:'temperature',m:'온도',pos:0,eiken:'3급',topic:'과학',status:'learning',fav:false,ex:'The temperature is rising.'},
+  {w:'theater',m:'극장',pos:0,eiken:'4급',topic:'문화와 예술',status:'learning',fav:false,ex:'We went to the theater.'},
+  {w:'tradition',m:'전통',pos:0,eiken:'3급',topic:'문화와 예술',status:'unlearned',fav:false,ex:'It is a Japanese tradition.'},
+  {w:'travel',m:'여행하다',pos:1,eiken:'4급',topic:'여가 활동',status:'learning',fav:true,ex:'I want to travel the world.'},
+  {w:'telephone',m:'전화기',pos:0,eiken:'5급',topic:'일상 사물',status:'mastered',fav:false,ex:'The telephone is ringing.'},
+  {w:'umbrella',m:'우산',pos:0,eiken:'5급',topic:'일상 사물',status:'learning',fav:false,ex:'Don\'t forget your umbrella.'},
+  {w:'understand',m:'이해하다',pos:1,eiken:'4급',topic:'학교 생활',status:'learning',fav:false,ex:'I understand the problem.'},
+  {w:'uniform',m:'제복',pos:0,eiken:'4급',topic:'학교 생활',status:'weak',fav:false,ex:'Students wear uniforms.'},
+  {w:'universe',m:'우주',pos:0,eiken:'3급',topic:'과학',status:'unlearned',fav:false,ex:'The universe is infinite.'},
+  {w:'vacation',m:'방학, 휴가',pos:0,eiken:'4급',topic:'여가 활동',status:'learning',fav:false,ex:'I enjoyed my vacation.'},
+  {w:'vegetable',m:'채소',pos:0,eiken:'5급',topic:'음식과 건강',status:'mastered',fav:false,ex:'Eat your vegetables.'},
+  {w:'village',m:'마을',pos:0,eiken:'4급',topic:'사회',status:'learning',fav:false,ex:'A small village in the valley.'},
+  {w:'volunteer',m:'자원봉사자',pos:0,eiken:'3급',topic:'사회',status:'unlearned',fav:false,ex:'She works as a volunteer.'},
+  {w:'voice',m:'목소리',pos:0,eiken:'4급',topic:'인물',status:'learning',fav:false,ex:'She has a lovely voice.'},
+  {w:'weather',m:'날씨',pos:0,eiken:'5급',topic:'자연',status:'mastered',fav:false,ex:'The weather is nice today.'},
+  {w:'window',m:'창문',pos:0,eiken:'5급',topic:'일상 사물',status:'learning',fav:false,ex:'Open the window, please.'},
+  {w:'wonderful',m:'훌륭한',pos:2,eiken:'4급',topic:'일상 생활',status:'learning',fav:false,ex:'What a wonderful day!'},
+  {w:'wisdom',m:'지혜',pos:0,eiken:'3급',topic:'인물',status:'unlearned',fav:false,ex:'Wisdom comes with experience.'},
+  {w:'whale',m:'고래',pos:0,eiken:'4급',topic:'자연',status:'learning',fav:false,ex:'The whale is a large mammal.'},
+  {w:'x-ray',m:'엑스레이',pos:0,eiken:'4급',topic:'과학',status:'unlearned',fav:false,ex:'The doctor took an x-ray.'},
+  {w:'yard',m:'마당',pos:0,eiken:'5급',topic:'일상 생활',status:'mastered',fav:false,ex:'Children play in the yard.'},
+  {w:'young',m:'젊은',pos:2,eiken:'5급',topic:'인물',status:'mastered',fav:false,ex:'She is still young.'},
+  {w:'yesterday',m:'어제',pos:3,eiken:'5급',topic:'일상 생활',status:'learning',fav:false,ex:'I saw him yesterday.'},
+  {w:'zero',m:'영, 제로',pos:0,eiken:'5급',topic:'과학',status:'mastered',fav:false,ex:'The temperature dropped to zero.'},
+  {w:'zoo',m:'동물원',pos:0,eiken:'5급',topic:'여가 활동',status:'learning',fav:false,ex:'We went to the zoo today.'},
+];
+
+// Build word objects
+const words = RAW_WORDS.map((r,i) => ({
+  id: i,
+  word: r.w,
+  meaning: r.m,
+  pos: POS_LIST[r.pos],
+  eiken: r.eiken,
+  topic: r.topic,
+  status: r.status,
+  favorite: r.fav,
+  example: r.ex,
+  totalAttempts: r.status==='unlearned'?0: r.status==='learning'?Math.floor(Math.random()*4)+1: r.status==='weak'?Math.floor(Math.random()*5)+3: Math.floor(Math.random()*8)+3,
+  accuracy: r.status==='weak'?Math.floor(Math.random()*30)+10: r.status==='mastered'?Math.floor(Math.random()*40)+60: Math.floor(Math.random()*60)+20,
+})).sort((a,b)=>a.word.localeCompare(b.word));
+
+// 7-day chart data
+const today = new Date();
+const DAYS_KR = ['일','월','화','수','목','금','토'];
+const chartData = [];
+for(let i=6;i>=0;i--){
+  const d = new Date(today);
+  d.setDate(d.getDate()-i);
+  chartData.push({
+    date: d,
+    count: Math.floor(Math.random()*18)+2,
+    label: `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+    day: DAYS_KR[d.getDay()],
+    isToday: i===0
+  });
+}
+
+// State
+let state = {
+  activeTab: 'learning', // learning, weak, mastered, favorite, all
+  selectedEiken: new Set(),
+  selectedTopics: new Set(),
+  filterOpen: false,
+  lastQuizType: 'ai',
+  selectedQuizType: 'ai',
+  selectedQuizCount: 10,
+};
+
+const TAB_CONFIG = [
+  {id:'learning', label:'학습한', filter: w=>w.status!=='unlearned'},
+  {id:'weak', label:'취약', filter: w=>w.status==='weak'},
+  {id:'mastered', label:'마스터', filter: w=>w.status==='mastered'},
+  {id:'favorite', label:'즐겨찾기', filter: w=>w.favorite},
+  {id:'all', label:'전체', filter: ()=>true},
+];
+
+const QUIZ_TYPES = [
+  {id:'ai',name:'AI 추천',desc:'학습 패턴을 분석해 최적의 단어 추천',icon:'🤖',featured:true},
+  {id:'all',name:'전체 단어',desc:'모든 단어에서 무작위로 학습',icon:'📚'},
+  {id:'studied',name:'학습한 단어',desc:'한 번이라도 학습한 단어 복습',icon:'📖'},
+  {id:'weak',name:'취약 단어',desc:'자주 틀렸던 단어만 집중 학습',icon:'🔴'},
+  {id:'master',name:'마스터 단어',desc:'더 익숙해져야 할 단어를 모아 집중 학습',icon:'🏆'},
+  {id:'favorite',name:'즐겨찾기 단어',desc:'즐겨찾기한 단어만 학습',icon:'❤️'},
+  {id:'topic',name:'주제별 단어',desc:'',icon:'🏷️'},
+  {id:'eiken5',name:'영검 5급',desc:'',icon:'5️⃣'},
+  {id:'eiken4',name:'영검 4급',desc:'',icon:'4️⃣'},
+  {id:'eiken3',name:'영검 3급',desc:'',icon:'3️⃣'},
+];
+
+function getQuizTypeCount(typeId){
+  switch(typeId){
+    case 'ai': return words.filter(w=>w.status!=='unlearned').length||words.length;
+    case 'all': return words.length;
+    case 'studied': return words.filter(w=>w.status!=='unlearned').length;
+    case 'weak': return words.filter(w=>w.status==='weak').length;
+    case 'master': return words.filter(w=>w.status==='mastered').length;
+    case 'favorite': return words.filter(w=>w.favorite).length;
+    case 'topic': return words.filter(w=>w.topic===TOPICS[Math.floor(Math.random()*TOPICS.length)]).length||10;
+    case 'eiken5': return words.filter(w=>w.eiken==='5급').length;
+    case 'eiken4': return words.filter(w=>w.eiken==='4급').length;
+    case 'eiken3': return words.filter(w=>w.eiken==='3급').length;
+    default: return 0;
+  }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+
+function renderChart(){
+  const area = document.getElementById('chartArea');
+  const allZero = chartData.every(d=>d.count===0);
+  if(allZero){
+    area.innerHTML = '<div class="empty-chart">최근 7일간 퀴즈 기록이 없습니다.<br>오늘부터 다시 시작해볼까요?</div>';
+    return;
+  }
+  const maxVal = Math.max(...chartData.map(d=>d.count));
+  let yMax;
+  if(maxVal<=10) yMax=10;
+  else if(maxVal<=50) yMax=Math.ceil(maxVal/10)*10;
+  else if(maxVal<=100) yMax=Math.ceil(maxVal/20)*20;
+  else yMax=Math.ceil(maxVal/50)*50;
+
+  const svgW=700, svgH=140, padL=30, padR=10, padT=20, padB=36;
+  const barW=40, gap=(svgW-padL-padR-barW*7)/6;
+
+  let bars='', labels='', values='';
+  chartData.forEach((d,i)=>{
+    const x = padL + i*(barW+gap);
+    const h = (d.count/yMax)*(svgH-padT-padB);
+    const y = svgH-padB-h;
+    const todayCls = d.isToday?' today':'';
+    bars += `<rect class="chart-bar${todayCls}" x="${x}" y="${y}" width="${barW}" height="${h}" data-idx="${i}"/>`;
+    values += `<text class="chart-value" x="${x+barW/2}" y="${y-5}">${d.count}</text>`;
+    labels += `<text class="chart-label${todayCls}" x="${x+barW/2}" y="${svgH-18}">${d.day}</text>`;
+    labels += `<text class="chart-label${todayCls}" x="${x+barW/2}" y="${svgH-5}" style="font-size:10px">${d.label}</text>`;
+  });
+
+  area.innerHTML = `
+    <div class="chart-area">
+      <svg class="chart-svg" viewBox="0 0 ${svgW} ${svgH}">
+        ${bars}${values}${labels}
+      </svg>
+      <div class="chart-tooltip" id="chartTooltip"></div>
+    </div>`;
+
+  // Tooltip
+  area.querySelectorAll('.chart-bar').forEach(bar=>{
+    bar.addEventListener('mouseenter', e=>{
+      const idx = +bar.dataset.idx;
+      const d = chartData[idx];
+      const tooltip = document.getElementById('chartTooltip');
+      const dt = d.date;
+      tooltip.innerHTML = `${dt.getMonth()+1}월 ${dt.getDate()}일 (${d.day})<br>퀴즈 ${d.count}개 완료`;
+      tooltip.style.opacity='1';
+      const rect = bar.getBoundingClientRect();
+      const areaRect = area.querySelector('.chart-area').getBoundingClientRect();
+      tooltip.style.left = (rect.left - areaRect.left + rect.width/2 - tooltip.offsetWidth/2) + 'px';
+      tooltip.style.top = (rect.top - areaRect.top - tooltip.offsetHeight - 10) + 'px';
+    });
+    bar.addEventListener('mouseleave', ()=>{
+      document.getElementById('chartTooltip').style.opacity='0';
+    });
+  });
+}
+
+function renderTabs(){
+  const area = document.getElementById('tabsArea');
+  // Check if learned count is 0 → default to 'all'
+  const learnedCount = words.filter(w=>w.status!=='unlearned').length;
+  if(learnedCount===0 && state.activeTab==='learning') state.activeTab='all';
+
+  area.innerHTML = TAB_CONFIG.map(t=>{
+    const cnt = words.filter(t.filter).length;
+    return `<div class="tab${state.activeTab===t.id?' active':''}" onclick="switchTab('${t.id}')">${t.label}<span class="count">${cnt}개</span></div>`;
+  }).join('');
+}
+
+function switchTab(id){
+  state.activeTab = id;
+  renderTabs();
+  renderWordList();
+}
+
+function toggleFilter(){
+  state.filterOpen = !state.filterOpen;
+  document.getElementById('filterPanel').classList.toggle('open', state.filterOpen);
+  const btn = document.getElementById('filterToggleBtn');
+  btn.textContent = state.filterOpen ? '필터 숨기기' : '필터 보기';
+  btn.classList.toggle('open', state.filterOpen);
+}
+
+function resetFilters(){
+  state.selectedEiken.clear();
+  state.selectedTopics.clear();
+  renderFilterChips();
+  renderWordList();
+}
+
+function renderFilterChips(){
+  // Eiken
+  const eikenArea = document.getElementById('eikenChips');
+  eikenArea.innerHTML = EIKEN_LEVELS.map(lv=>
+    `<div class="filter-chip${state.selectedEiken.has(lv)?' selected':''}" onclick="toggleEiken('${lv}')">${lv}</div>`
+  ).join('');
+  // Topics
+  const topicArea = document.getElementById('topicChips');
+  topicArea.innerHTML = TOPICS.map(t=>
+    `<div class="filter-chip${state.selectedTopics.has(t)?' selected':''}" onclick="toggleTopic('${t}')">${t}</div>`
+  ).join('');
+}
+
+function toggleEiken(lv){
+  if(state.selectedEiken.has(lv)) state.selectedEiken.delete(lv);
+  else state.selectedEiken.add(lv);
+  renderFilterChips();
+  renderWordList();
+}
+
+function toggleTopic(t){
+  if(state.selectedTopics.has(t)) state.selectedTopics.delete(t);
+  else state.selectedTopics.add(t);
+  renderFilterChips();
+  renderWordList();
+}
+
+function getFilteredWords(){
+  const tabFilter = TAB_CONFIG.find(t=>t.id===state.activeTab).filter;
+  return words.filter(w=>{
+    if(!tabFilter(w)) return false;
+    if(state.selectedEiken.size>0 && !state.selectedEiken.has(w.eiken)) return false;
+    if(state.selectedTopics.size>0 && !state.selectedTopics.has(w.topic)) return false;
+    return true;
+  });
+}
+
+function buildHeaderTitle(){
+  const tabLabel = TAB_CONFIG.find(t=>t.id===state.activeTab).label + ' 단어';
+  let parts = [tabLabel];
+  let filterParts = [];
+
+  if(state.selectedEiken.size>0){
+    const arr = EIKEN_LEVELS.filter(l=>state.selectedEiken.has(l));
+    if(arr.length<=2) filterParts.push('영검 ' + arr.join(' \u2022 '));
+    else filterParts.push('영검 ' + arr.slice(0,2).join(' \u2022 ') + ` 외 ${arr.length-2}개`);
+  }
+  if(state.selectedTopics.size>0){
+    const arr = TOPICS.filter(t=>state.selectedTopics.has(t));
+    if(arr.length<=2) filterParts.push(arr.join(' \u2022 '));
+    else filterParts.push(arr.slice(0,2).join(' \u2022 ') + ` 외 ${arr.length-2}개`);
+  }
+
+  if(filterParts.length>0){
+    return tabLabel + ' > <span class="filter-info">' + filterParts.join(' ㅣ ') + '</span>';
+  }
+  return tabLabel;
+}
+
+function renderWordList(){
+  const filtered = getFilteredWords();
+  document.getElementById('wordListTitle').innerHTML = buildHeaderTitle();
+  document.getElementById('wordListCount').textContent = filtered.length + '개';
+
+  const container = document.getElementById('wordCards');
+  if(filtered.length===0){
+    container.innerHTML = '<div class="empty-state">선택한 조건에 맞는 단어가 없습니다.</div>';
+    renderAlphaIndex(filtered);
+    return;
+  }
+
+  // Group by first letter
+  const groups = {};
+  filtered.forEach(w=>{
+    const letter = w.word[0].toUpperCase();
+    if(!groups[letter]) groups[letter]=[];
+    groups[letter].push(w);
+  });
+
+  let html = '';
+  Object.keys(groups).sort().forEach(letter=>{
+    html += `<div class="alpha-group-header" id="alpha-${letter}">${letter}</div>`;
+    groups[letter].forEach(w=>{
+      const statusCls = w.status==='unlearned'?'unlearned':w.status==='learning'?'learning':w.status==='weak'?'weak':'mastered';
+      html += `
+        <div class="word-card" data-id="${w.id}">
+          <div class="word-card-top">
+            <div class="word-card-left">
+              <span class="word-entry">${w.word}</span>
+              <span class="word-meaning">${w.meaning}</span>
+              <button class="word-sound-btn" title="발음 듣기" onclick="playSound('${w.word}')">&#128266;</button>
+            </div>
+            <div class="word-card-right">
+              <button class="word-fav-btn${w.favorite?' active':''}" onclick="toggleFav(${w.id})" title="즐겨찾기">${w.favorite?'&#10084;':'&#9825;'}</button>
+              ${w.example?`<button class="word-expand-btn" onclick="toggleExample(${w.id},this)" title="예문 보기">&#9660;</button>`:''}
+            </div>
+          </div>
+          <div class="word-meta">
+            <span class="badge badge-pos">${w.pos.abb}</span>
+            ${w.eiken?`<span class="badge badge-eiken">${w.eiken}</span>`:''}
+            <span class="badge badge-topic">${w.topic}</span>
+            <span class="badge badge-status ${statusCls}">${STATUS_LABELS[w.status]}</span>
+          </div>
+          ${w.example?`<div class="word-example" id="example-${w.id}">${w.example}</div>`:''}
+        </div>`;
+    });
+  });
+  container.innerHTML = html;
+  renderAlphaIndex(filtered);
+}
+
+function renderAlphaIndex(filtered){
+  const alphaArea = document.getElementById('alphaIndex');
+  const activeLetters = new Set(filtered.map(w=>w.word[0].toUpperCase()));
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  alphaArea.innerHTML = alphabet.map(l=>{
+    const cls = activeLetters.has(l)?'':'disabled';
+    return `<button class="alpha-btn ${cls}" onclick="scrollToAlpha('${l}')">${l}</button>`;
+  }).join('');
+
+  // Scroll tracking
+  const mainArea = document.getElementById('mainArea');
+  mainArea.onscroll = ()=>{
+    const headers = document.querySelectorAll('.alpha-group-header');
+    let current = '';
+    headers.forEach(h=>{
+      if(h.getBoundingClientRect().top < 200) current = h.id.replace('alpha-','');
+    });
+    alphaArea.querySelectorAll('.alpha-btn').forEach(btn=>{
+      btn.classList.toggle('active', btn.textContent===current && !btn.classList.contains('disabled'));
+    });
+  };
+}
+
+function scrollToAlpha(letter){
+  const el = document.getElementById('alpha-'+letter);
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function toggleFav(id){
+  const w = words.find(w=>w.id===id);
+  w.favorite = !w.favorite;
+  renderTabs();
+  renderWordList();
+}
+
+function toggleExample(id, btn){
+  const el = document.getElementById('example-'+id);
+  el.classList.toggle('open');
+  btn.classList.toggle('open');
+}
+
+function playSound(word){
+  // Speech synthesis for demo
+  if('speechSynthesis' in window){
+    const u = new SpeechSynthesisUtterance(word);
+    u.lang='en-US';
+    speechSynthesis.speak(u);
+  }
+}
+
+// ============================================================
+// QUIZ MODAL
+// ============================================================
+let randomTopic = TOPICS[Math.floor(Math.random()*TOPICS.length)];
+
+function openQuizModal(){
+  randomTopic = TOPICS[Math.floor(Math.random()*TOPICS.length)];
+  state.selectedQuizType = 'ai';
+  state.selectedQuizCount = 10;
+  renderQuizModal();
+  document.getElementById('quizModal').classList.add('open');
+}
+
+function closeQuizModal(){
+  document.getElementById('quizModal').classList.remove('open');
+}
+
+function renderQuizModal(){
+  const list = document.getElementById('quizTypeList');
+  list.innerHTML = QUIZ_TYPES.map(t=>{
+    const cnt = getQuizTypeCount(t.id);
+    const disabled = cnt===0;
+    const selected = state.selectedQuizType===t.id;
+    const isRecent = state.lastQuizType===t.id;
+    let desc = t.desc;
+    if(t.id==='topic') desc = `"${randomTopic}" 주제의 단어로 학습`;
+
+    let cls = 'quiz-type-btn';
+    if(t.featured) cls += ' featured';
+    if(selected) cls += ' selected';
+    if(disabled) cls += ' disabled';
+
+    return `<button class="${cls}" onclick="selectQuizType('${t.id}')">
+      <div class="quiz-type-icon">${t.icon}</div>
+      <div class="quiz-type-info">
+        <div class="quiz-type-name">${t.name}</div>
+        <div class="quiz-type-desc">${desc} (${cnt}개)</div>
+      </div>
+      ${isRecent?'<span class="quiz-type-recent">최근</span>':''}
+    </button>`;
+  }).join('');
+
+  // Count options
+  const countArea = document.getElementById('quizCountOptions');
+  countArea.innerHTML = [10,20,30].map(n=>
+    `<div class="quiz-count-btn${state.selectedQuizCount===n?' selected':''}" onclick="selectQuizCount(${n})">${n}개</div>`
+  ).join('');
+}
+
+function selectQuizType(id){
+  state.selectedQuizType = id;
+  renderQuizModal();
+}
+
+function selectQuizCount(n){
+  state.selectedQuizCount = n;
+  renderQuizModal();
+}
+
+function startQuiz(){
+  const actual = Math.min(state.selectedQuizCount, getQuizTypeCount(state.selectedQuizType));
+  if(actual < state.selectedQuizCount){
+    showAlert(`선택한 유형의 단어 수에 맞춰 ${actual}문제가 제공됩니다.`);
+  } else {
+    showAlert(`${actual}문제로 퀴즈를 시작합니다!`);
+  }
+  state.lastQuizType = state.selectedQuizType;
+  closeQuizModal();
+}
+
+function showAlert(msg){
+  document.getElementById('alertMsg').textContent = msg;
+  document.getElementById('alertModal').classList.add('open');
+}
+
+function closeAlert(){
+  document.getElementById('alertModal').classList.remove('open');
+}
+
+// Close modal on overlay click
+document.getElementById('quizModal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('quizModal')) closeQuizModal();
+});
+document.getElementById('alertModal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('alertModal')) closeAlert();
+});
+
+// ============================================================
+// INIT
+// ============================================================
+function init(){
+  renderChart();
+  renderTabs();
+  renderFilterChips();
+  renderWordList();
+}
+init();
+</script>
+</body>
+</html>
