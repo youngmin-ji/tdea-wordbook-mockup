@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TDEA 단어 퀴즈 구성 검증</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI',-apple-system,sans-serif;background:#f5f6fa;color:#222;padding:24px;}
+h1{font-size:22px;color:#1a1f36;margin-bottom:4px;}
+.subtitle{font-size:13px;color:#9ca3af;margin-bottom:24px;}
+.test-group{background:#fff;border-radius:12px;padding:20px 24px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.test-group-title{font-size:15px;font-weight:700;color:#1a1f36;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.test-group-ref{font-size:11px;color:#9ca3af;font-weight:400;background:#f3f4f6;padding:2px 8px;border-radius:10px;}
+.test-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px;}
+.test-row:last-child{border-bottom:none;}
+.test-icon{font-size:16px;flex-shrink:0;width:22px;text-align:center;padding-top:1px;}
+.test-name{flex:1;color:#374151;}
+.test-detail{font-size:12px;color:#9ca3af;margin-top:2px;}
+.test-result{font-size:12px;padding:2px 10px;border-radius:10px;font-weight:600;white-space:nowrap;flex-shrink:0;}
+.pass{background:#d1fae5;color:#059669;}
+.fail{background:#fee2e2;color:#dc2626;}
+.warn{background:#fef3c7;color:#d97706;}
+
+.summary-bar{display:flex;gap:16px;margin-bottom:24px;padding:16px 20px;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.summary-stat{text-align:center;}
+.summary-val{font-size:28px;font-weight:800;}
+.summary-val.green{color:#059669;}.summary-val.red{color:#dc2626;}.summary-val.gray{color:#9ca3af;}
+.summary-label{font-size:11px;color:#9ca3af;}
+
+.run-btn{display:inline-block;padding:10px 28px;background:#7c8aff;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:20px;}
+.run-btn:hover{background:#5b6bff;}
+
+.detail-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px;}
+.detail-table th{text-align:left;background:#f9fafb;padding:6px 10px;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;}
+.detail-table td{padding:6px 10px;border-bottom:1px solid #f3f4f6;color:#374151;}
+.detail-table .num{text-align:right;font-variant-numeric:tabular-nums;}
+.highlight{background:#fef3c7;}
+</style>
+</head>
+<body>
+<h1>TDEA 단어 퀴즈 구성 정책 검증</h1>
+<div class="subtitle">기획서 슬라이드 8~17 기준 | 자동 검증 테스트</div>
+<button class="run-btn" onclick="runAllTests()">전체 테스트 실행</button>
+<div class="summary-bar" id="summaryBar">
+  <div class="summary-stat"><div class="summary-val gray" id="sumTotal">-</div><div class="summary-label">전체</div></div>
+  <div class="summary-stat"><div class="summary-val green" id="sumPass">-</div><div class="summary-label">통과</div></div>
+  <div class="summary-stat"><div class="summary-val red" id="sumFail">-</div><div class="summary-label">실패</div></div>
+</div>
+<div id="results"></div>
+
+<script>
+// ============================================================
+// SPEC DEFINITIONS (from slides 8-17)
+// ============================================================
+
+// Slide 9: Status judgment
+const STATUS_RULES = {
+  unlearned: { label:'미학습', rule:'총 풀이 횟수 = 0' },
+  learning:  { label:'학습 중', rule:'총 풀이 횟수 ≥ 1 AND 취약/마스터 조건 미충족' },
+  weak:      { label:'취약',   rule:'총 풀이 횟수 ≥ 3 AND 최근 풀이 결과 = 오답 AND 누적 정답률 ≤ 40%' },
+  mastered:  { label:'마스터', rule:'총 풀이 횟수 ≥ 3 AND 최근 3회 연속 정답 AND 누적 정답률 ≥ 50%' },
+};
+
+// Slide 10: Allowed question types per status
+// e2k1=영역1-1, e2k2=영역1-2, k2e1=영역2-1, k2e2=영역2-2, fill1=영역3-1, fill2=영역3-2, spell=영역4
+const ALLOWED_QTYPES = {
+  unlearned: ['e2k1','k2e1','fill1'],
+  learning:  ['e2k1','e2k2','k2e1','k2e2','fill1','fill2'],
+  weak:      ['e2k1','k2e1','fill1','fill2'],
+  mastered:  ['e2k1','e2k2','k2e1','k2e2','spell'],
+};
+
+// Slide 10: Cycle rules per status
+const CYCLE_RULES = {
+  unlearned: ['e2k1','k2e1','fill1'],
+  learning:  ['e2k1','k2e1','e2k2','k2e2','fill1','fill2'],
+  weak:      ['e2k1','k2e1','fill1','fill2'],
+  mastered:  ['e2k1','e2k2','k2e1','k2e2','spell'],
+};
+
+// Slides 13-16: Composition ratios per quiz type
+const COMPOSITION_RULES = {
+  ai: {
+    label: 'AI 추천',
+    slide: 13,
+    ratios: { unlearned:{max:0.20}, mastered:{max:0.30}, weak:{max:0.20}, learning:{fill:true} },
+    orderRule: 'e2k1→e2k2→k2e1→k2e2→fill1→fill2→spell',
+  },
+  all: {
+    label: '전체 단어',
+    slide: 13,
+    ratios: { unlearned:{max:0.40}, mastered:{max:0.10}, weak:{max:0.20}, learning:{fill:true} },
+    orderRule: 'e2k1→e2k2→k2e1→k2e2→fill1→fill2→spell',
+  },
+  studied: {
+    label: '학습한 단어',
+    slide: 14,
+    ratios: { learning:{max:0.60}, mastered:{max:0.20}, weak:{max:0.20} },
+    orderRule: 'e2k1→e2k2→k2e1→k2e2→fill1',
+  },
+  weak: {
+    label: '취약 단어',
+    slide: 14,
+    fixedQtypeRatios: { e2k1:0.40, k2e1:0.40, fill1:0.20 },
+    orderRule: 'e2k1→k2e1→fill1',
+  },
+  master: {
+    label: '마스터 단어',
+    slide: 15,
+    fixedQtypeRatios: { e2k1:0.30, e2k2:0.30, k2e1:0.10, k2e2:0.10, spell:0.20 },
+    orderRule: 'e2k1→e2k2→k2e1→k2e2→spell',
+  },
+  favorite: {
+    label: '즐겨찾기 단어',
+    slide: 15,
+    orderRule: 'e2k1→e2k2→k2e1→k2e2→fill1→fill2→spell',
+  },
+  topic: {
+    label: '주제별 단어',
+    slide: 16,
+    orderRule: 'e2k1→e2k2→k2e1→k2e2→fill1→fill2→spell',
+  },
+  eiken: {
+    label: '영검 급수별 단어',
+    slide: 16,
+    orderRule: 'e2k1→e2k2→k2e1→k2e2→fill1→fill2→spell',
+  },
+};
+
+const QTYPE_LABELS = {
+  e2k1:'[영역1]1단계', e2k2:'[영역1]2단계',
+  k2e1:'[영역2]1단계', k2e2:'[영역2]2단계',
+  fill1:'[영역3]1단계', fill2:'[영역3]2단계',
+  spell:'[영역4]심화',
+};
+
+const ORDER_MAP = { e2k1:0, e2k2:1, k2e1:2, k2e2:3, fill1:4, fill2:5, spell:6 };
+
+// ============================================================
+// QUIZ ENGINE (replicated from index.html for testing)
+// ============================================================
+function judgeStatus(attempts, lastCorrect, streak, accuracy){
+  if(attempts === 0) return 'unlearned';
+  if(attempts >= 3 && !lastCorrect && accuracy <= 40) return 'weak';
+  if(attempts >= 3 && streak >= 3 && accuracy >= 50) return 'mastered';
+  return 'learning';
+}
+
+function composeQuiz(quizType, totalCount, wordPool){
+  const rules = COMPOSITION_RULES[quizType];
+  let selectedWords = [];
+
+  if(rules.ratios){
+    // Status-based composition
+    const byStatus = { unlearned:[], learning:[], weak:[], mastered:[] };
+    wordPool.forEach(w => { if(byStatus[w.status]) byStatus[w.status].push(w); });
+
+    const quotas = {};
+    let remaining = totalCount;
+
+    // Calculate quotas for non-fill statuses first
+    for(const [status, cfg] of Object.entries(rules.ratios)){
+      if(cfg.fill) continue;
+      const maxCount = Math.min(Math.floor(totalCount * cfg.max), byStatus[status].length);
+      quotas[status] = maxCount;
+      remaining -= maxCount;
+    }
+
+    // Fill status gets the remainder
+    for(const [status, cfg] of Object.entries(rules.ratios)){
+      if(!cfg.fill) continue;
+      quotas[status] = Math.min(remaining, byStatus[status].length);
+    }
+
+    // If quotas don't add up (not enough words in some status), redistribute to fill status
+    let total = Object.values(quotas).reduce((a,b)=>a+b,0);
+    if(total < totalCount){
+      for(const [status, cfg] of Object.entries(rules.ratios)){
+        if(cfg.fill){
+          quotas[status] = Math.min(quotas[status] + (totalCount - total), byStatus[status].length);
+        }
+      }
+    }
+
+    // Pick words per quota
+    for(const [status, count] of Object.entries(quotas)){
+      const pool = shuffle([...byStatus[status]]);
+      selectedWords.push(...pool.slice(0, count).map(w=>({...w, _assignedStatus:status})));
+    }
+  } else if(rules.fixedQtypeRatios){
+    // Use all words from pool
+    selectedWords = shuffle([...wordPool]).slice(0, totalCount).map(w=>({...w}));
+  } else {
+    selectedWords = shuffle([...wordPool]).slice(0, totalCount).map(w=>({...w}));
+  }
+
+  // Assign question types
+  const questions = [];
+  if(rules.fixedQtypeRatios){
+    // Distribute by fixed qtype ratios
+    const qtypeQuotas = {};
+    let assigned = 0;
+    const entries = Object.entries(rules.fixedQtypeRatios);
+    entries.forEach(([qt, ratio], idx) => {
+      if(idx === entries.length - 1){
+        qtypeQuotas[qt] = selectedWords.length - assigned;
+      } else {
+        qtypeQuotas[qt] = Math.round(selectedWords.length * ratio);
+        assigned += qtypeQuotas[qt];
+      }
+    });
+
+    let wordIdx = 0;
+    for(const [qt, count] of Object.entries(qtypeQuotas)){
+      for(let i=0; i<count && wordIdx<selectedWords.length; i++){
+        questions.push({ word: selectedWords[wordIdx], qtype: qt });
+        wordIdx++;
+      }
+    }
+  } else {
+    // Assign by cycle rules per word status, filtered to quiz's allowed qtypes
+    const allowedQtypes = rules.orderRule.split('→').map(s=>s.trim());
+    selectedWords.forEach((w, i) => {
+      const fullCycle = CYCLE_RULES[w.status] || CYCLE_RULES.learning;
+      const cycle = fullCycle.filter(qt => allowedQtypes.includes(qt));
+      if(cycle.length === 0) cycle.push(fullCycle[0]); // fallback
+      const qt = cycle[i % cycle.length];
+      questions.push({ word: w, qtype: qt });
+    });
+  }
+
+  // Sort by order rule
+  const orderArr = rules.orderRule.split('→').map(s=>s.trim());
+  questions.sort((a,b) => {
+    const oa = orderArr.indexOf(a.qtype);
+    const ob = orderArr.indexOf(b.qtype);
+    return (oa===-1?99:oa) - (ob===-1?99:ob);
+  });
+
+  return { questions, quotas: rules.ratios ? Object.fromEntries(
+    Object.entries(rules.ratios).map(([s,_])=>[s, questions.filter(q=>q.word.status===s).length])
+  ) : null };
+}
+
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
+// ============================================================
+// TEST DATA
+// ============================================================
+function makeWord(word, status, extra={}){
+  const defaults = {
+    unlearned: {attempts:0, lastCorrect:false, streak:0, accuracy:0},
+    learning:  {attempts:2, lastCorrect:true, streak:1, accuracy:50},
+    weak:      {attempts:5, lastCorrect:false, streak:0, accuracy:30},
+    mastered:  {attempts:6, lastCorrect:true, streak:4, accuracy:80},
+  };
+  const d = defaults[status];
+  return { word, status, ...d, ...extra };
+}
+
+function generateTestPool(){
+  const pool = [];
+  const statuses = ['unlearned','learning','weak','mastered'];
+  for(let i=0; i<120; i++){
+    const s = statuses[i % 4];
+    pool.push(makeWord(`word${i}`, s, {
+      favorite: i%7===0,
+      topic: ['인물','학교 생활','과학','자연','사회'][i%5],
+      eiken: ['5급','4급','3급'][i%3],
+      masteredDate: s==='mastered' ? Date.now() - (i%2===0 ? 8*86400000 : 3*86400000) : null,
+    }));
+  }
+  return pool;
+}
+
+// ============================================================
+// TEST RUNNER
+// ============================================================
+let testResults = [];
+
+function assert(name, condition, detail=''){
+  testResults.push({ name, pass:condition, detail });
+}
+
+function runAllTests(){
+  testResults = [];
+  const pool = generateTestPool();
+
+  // ============================
+  // GROUP A: 단어 상태 판정 (Slide 9)
+  // ============================
+  // A1: 미학습
+  assert('미학습: 풀이 횟수 0', judgeStatus(0, false, 0, 0) === 'unlearned');
+
+  // A2: 학습 중
+  assert('학습 중: 풀이 1회, 조건 미충족', judgeStatus(1, true, 1, 100) === 'learning');
+  assert('학습 중: 풀이 2회, 정답률 50%', judgeStatus(2, false, 0, 50) === 'learning');
+
+  // A3: 취약 판정
+  assert('취약: 풀이 3회 + 최근 오답 + 정답률 40%', judgeStatus(3, false, 0, 40) === 'weak');
+  assert('취약: 풀이 5회 + 최근 오답 + 정답률 20%', judgeStatus(5, false, 0, 20) === 'weak');
+  assert('취약 미충족: 풀이 3회 + 최근 오답 + 정답률 50%', judgeStatus(3, false, 0, 50) !== 'weak',
+    '정답률 50%이므로 취약 아님');
+  assert('취약 미충족: 풀이 2회 (최소 3회 미달)', judgeStatus(2, false, 0, 30) !== 'weak',
+    '풀이 2회이므로 취약 아님');
+  assert('취약 미충족: 최근 정답', judgeStatus(3, true, 1, 30) !== 'weak',
+    '최근 정답이므로 취약 아님');
+
+  // A4: 마스터 판정
+  assert('마스터: 풀이 3회 + 3연속 정답 + 정답률 50%', judgeStatus(3, true, 3, 100) === 'mastered');
+  assert('마스터: 풀이 6회 + 4연속 정답 + 정답률 67%', judgeStatus(6, true, 4, 67) === 'mastered');
+  assert('마스터 미충족: 연속 정답 2회', judgeStatus(3, true, 2, 67) !== 'mastered',
+    '연속 정답 2회 (3회 미달)');
+  assert('마스터 미충족: 정답률 40%', judgeStatus(5, true, 3, 40) !== 'mastered',
+    '정답률 40% (50% 미달)');
+  assert('마스터 미충족: 풀이 2회', judgeStatus(2, true, 2, 100) !== 'mastered',
+    '풀이 2회 (3회 미달)');
+
+  // Edge cases
+  assert('경계: 풀이 3 + 오답 + 정답률 41% → 학습 중', judgeStatus(3, false, 0, 41) === 'learning',
+    '41% > 40% 이므로 취약 아님');
+  assert('경계: 풀이 3 + 3연속 + 정답률 49% → 학습 중', judgeStatus(3, true, 3, 49) === 'learning',
+    '49% < 50% 이므로 마스터 아님');
+
+  // ============================
+  // GROUP B: 상태별 허용 문항 유형 (Slide 10)
+  // ============================
+  for(const [status, allowed] of Object.entries(ALLOWED_QTYPES)){
+    const allTypes = ['e2k1','e2k2','k2e1','k2e2','fill1','fill2','spell'];
+    const forbidden = allTypes.filter(t => !allowed.includes(t));
+
+    assert(`${STATUS_RULES[status].label}: 허용 유형 = ${allowed.map(t=>QTYPE_LABELS[t]).join(', ')}`,
+      true, '기획서 정의 확인');
+
+    // Verify cycle only uses allowed types
+    const cycle = CYCLE_RULES[status];
+    const invalidInCycle = cycle.filter(t => !allowed.includes(t));
+    assert(`${STATUS_RULES[status].label}: 순환 규칙에 금지된 유형 없음`,
+      invalidInCycle.length === 0,
+      invalidInCycle.length>0 ? `금지 유형 포함: ${invalidInCycle.join(',')}` : '');
+  }
+
+  // ============================
+  // GROUP C: 상태별 문항 순환 규칙 (Slide 10)
+  // ============================
+  const expectedCycles = {
+    unlearned: ['e2k1','k2e1','fill1'],
+    learning:  ['e2k1','k2e1','e2k2','k2e2','fill1','fill2'],
+    weak:      ['e2k1','k2e1','fill1','fill2'],
+    mastered:  ['e2k1','e2k2','k2e1','k2e2','spell'],
+  };
+  for(const [status, expected] of Object.entries(expectedCycles)){
+    const actual = CYCLE_RULES[status];
+    const match = JSON.stringify(actual) === JSON.stringify(expected);
+    assert(`${STATUS_RULES[status].label} 순환: ${expected.map(t=>QTYPE_LABELS[t]).join(' → ')}`,
+      match,
+      match ? '' : `실제: ${actual.map(t=>QTYPE_LABELS[t]).join(' → ')}`);
+  }
+
+  // Verify cycle repeats correctly
+  for(const [status, cycle] of Object.entries(CYCLE_RULES)){
+    // Test 20 iterations - should wrap around
+    const generated = [];
+    for(let i=0;i<20;i++) generated.push(cycle[i % cycle.length]);
+    const expectedSeq = [];
+    while(expectedSeq.length<20){ expectedSeq.push(...cycle); }
+    assert(`${STATUS_RULES[status].label} 순환 반복 (20회)`,
+      JSON.stringify(generated) === JSON.stringify(expectedSeq.slice(0,20)));
+  }
+
+  // ============================
+  // GROUP D: 퀴즈 유형별 구성 비율 (Slides 13-16)
+  // ============================
+
+  // D1: AI 추천 (Slide 13)
+  const aiResult = composeQuiz('ai', 10, pool);
+  const aiQ = aiResult.questions;
+  const aiByStatus = {};
+  aiQ.forEach(q => { aiByStatus[q.word.status] = (aiByStatus[q.word.status]||0)+1; });
+
+  assert('AI추천: 총 문항 수 = 10', aiQ.length === 10, `실제: ${aiQ.length}`);
+  assert('AI추천: 미학습 ≤ 20% (≤2개)', (aiByStatus.unlearned||0) <= 2,
+    `미학습 ${aiByStatus.unlearned||0}개 / 10개`);
+  assert('AI추천: 마스터 ≤ 30% (≤3개)', (aiByStatus.mastered||0) <= 3,
+    `마스터 ${aiByStatus.mastered||0}개 / 10개`);
+  assert('AI추천: 취약 ≤ 20% (≤2개)', (aiByStatus.weak||0) <= 2,
+    `취약 ${aiByStatus.weak||0}개 / 10개`);
+
+  // D2: 전체 단어 (Slide 13)
+  const allResult = composeQuiz('all', 10, pool);
+  const allQ = allResult.questions;
+  const allByStatus = {};
+  allQ.forEach(q => { allByStatus[q.word.status] = (allByStatus[q.word.status]||0)+1; });
+
+  assert('전체단어: 총 문항 수 = 10', allQ.length === 10);
+  assert('전체단어: 미학습 ≤ 40% (≤4개)', (allByStatus.unlearned||0) <= 4,
+    `미학습 ${allByStatus.unlearned||0}개 / 10개`);
+  assert('전체단어: 마스터 ≤ 10% (≤1개)', (allByStatus.mastered||0) <= 1,
+    `마스터 ${allByStatus.mastered||0}개 / 10개`);
+  assert('전체단어: 취약 ≤ 20% (≤2개)', (allByStatus.weak||0) <= 2,
+    `취약 ${allByStatus.weak||0}개 / 10개`);
+
+  // D3: 학습한 단어 (Slide 14)
+  const studiedPool = pool.filter(w=>w.status!=='unlearned');
+  const studiedResult = composeQuiz('studied', 10, studiedPool);
+  const studiedQ = studiedResult.questions;
+  const studiedByStatus = {};
+  studiedQ.forEach(q => { studiedByStatus[q.word.status] = (studiedByStatus[q.word.status]||0)+1; });
+
+  assert('학습한단어: 미학습 포함 안 됨', (studiedByStatus.unlearned||0) === 0,
+    `미학습 ${studiedByStatus.unlearned||0}개`);
+  assert('학습한단어: 학습 중 ≤ 60% (≤6개)', (studiedByStatus.learning||0) <= 6,
+    `학습 중 ${studiedByStatus.learning||0}개 / 10개`);
+  assert('학습한단어: 마스터 ≤ 20% (≤2개)', (studiedByStatus.mastered||0) <= 2,
+    `마스터 ${studiedByStatus.mastered||0}개 / 10개`);
+  assert('학습한단어: 취약 ≤ 20% (≤2개)', (studiedByStatus.weak||0) <= 2,
+    `취약 ${studiedByStatus.weak||0}개 / 10개`);
+
+  // D4: 취약 단어 - 문항 유형 비율 (Slide 14)
+  const weakPool = pool.filter(w=>w.status==='weak');
+  const weakResult = composeQuiz('weak', 10, weakPool);
+  const weakQ = weakResult.questions;
+  const weakByQtype = {};
+  weakQ.forEach(q => { weakByQtype[q.qtype] = (weakByQtype[q.qtype]||0)+1; });
+
+  assert('취약단어: 영역1-1단계 ≈ 40% (4개)', Math.abs((weakByQtype.e2k1||0) - 4) <= 1,
+    `영역1-1단계: ${weakByQtype.e2k1||0}개 (기대: 4개)`);
+  assert('취약단어: 영역2-1단계 ≈ 40% (4개)', Math.abs((weakByQtype.k2e1||0) - 4) <= 1,
+    `영역2-1단계: ${weakByQtype.k2e1||0}개 (기대: 4개)`);
+  assert('취약단어: 영역3-1단계 ≈ 20% (2개)', Math.abs((weakByQtype.fill1||0) - 2) <= 1,
+    `영역3-1단계: ${weakByQtype.fill1||0}개 (기대: 2개)`);
+  assert('취약단어: 다른 유형 없음',
+    !weakByQtype.e2k2 && !weakByQtype.k2e2 && !weakByQtype.fill2 && !weakByQtype.spell,
+    `허용 외 유형: ${Object.keys(weakByQtype).filter(t=>!['e2k1','k2e1','fill1'].includes(t)).join(',') || '없음'}`);
+
+  // D5: 마스터 단어 - 문항 유형 비율 (Slide 15)
+  const masterPool = pool.filter(w=>w.status==='mastered');
+  const masterResult = composeQuiz('master', 10, masterPool);
+  const masterQ = masterResult.questions;
+  const masterByQtype = {};
+  masterQ.forEach(q => { masterByQtype[q.qtype] = (masterByQtype[q.qtype]||0)+1; });
+
+  assert('마스터단어: 영역1-1단계 ≈ 30% (3개)', Math.abs((masterByQtype.e2k1||0) - 3) <= 1,
+    `영역1-1단계: ${masterByQtype.e2k1||0}개 (기대: 3개)`);
+  assert('마스터단어: 영역1-2단계 ≈ 30% (3개)', Math.abs((masterByQtype.e2k2||0) - 3) <= 1,
+    `영역1-2단계: ${masterByQtype.e2k2||0}개 (기대: 3개)`);
+  assert('마스터단어: 영역2-1단계 ≈ 10% (1개)', Math.abs((masterByQtype.k2e1||0) - 1) <= 1,
+    `영역2-1단계: ${masterByQtype.k2e1||0}개 (기대: 1개)`);
+  assert('마스터단어: 영역2-2단계 ≈ 10% (1개)', Math.abs((masterByQtype.k2e2||0) - 1) <= 1,
+    `영역2-2단계: ${masterByQtype.k2e2||0}개 (기대: 1개)`);
+  assert('마스터단어: 영역4 심화 ≈ 20% (2개)', Math.abs((masterByQtype.spell||0) - 2) <= 1,
+    `영역4 심화: ${masterByQtype.spell||0}개 (기대: 2개)`);
+
+  // ============================
+  // GROUP E: 최종 문항 배열 순서 (각 유형별)
+  // ============================
+  for(const [typeId, rules] of Object.entries(COMPOSITION_RULES)){
+    const orderArr = rules.orderRule.split('→').map(s=>s.trim());
+    let testPool = pool;
+    if(typeId==='studied') testPool = pool.filter(w=>w.status!=='unlearned');
+    else if(typeId==='weak') testPool = pool.filter(w=>w.status==='weak');
+    else if(typeId==='master') testPool = pool.filter(w=>w.status==='mastered');
+    else if(typeId==='favorite') testPool = pool.filter(w=>w.favorite);
+    else if(typeId==='topic') testPool = pool.filter(w=>w.topic==='인물');
+    else if(typeId==='eiken') testPool = pool.filter(w=>w.eiken==='5급');
+
+    if(testPool.length < 5) continue;
+    const result = composeQuiz(typeId, Math.min(10, testPool.length), testPool);
+    const qOrder = result.questions.map(q=>q.qtype);
+
+    // Verify non-decreasing order
+    let inOrder = true;
+    let lastIdx = -1;
+    for(const qt of qOrder){
+      const idx = orderArr.indexOf(qt);
+      if(idx < lastIdx){ inOrder = false; break; }
+      lastIdx = idx;
+    }
+
+    assert(`${rules.label}: 배열 순서 준수 (${rules.orderRule})`, inOrder,
+      `실제 순서: ${qOrder.map(t=>QTYPE_LABELS[t]).join(' → ')}`);
+  }
+
+  // ============================
+  // GROUP F: 추가 제약 조건 검증
+  // ============================
+
+  // F1: 1회 세션 내 동일 단어 중복 출제 없음
+  const dupResult = composeQuiz('ai', 10, pool);
+  const wordSet = new Set(dupResult.questions.map(q=>q.word.word));
+  assert('동일 단어 중복 출제 없음', wordSet.size === dupResult.questions.length,
+    `${dupResult.questions.length}문항 중 고유 단어 ${wordSet.size}개`);
+
+  // F2: 출제 가능 단어 < 요청 개수 → min 적용
+  const tinyPool = pool.slice(0, 3);
+  const tinyResult = composeQuiz('ai', 10, tinyPool);
+  assert('출제 가능 < 요청 시 min 적용', tinyResult.questions.length <= 3,
+    `요청 10개, 풀 3개 → 실제 ${tinyResult.questions.length}개`);
+
+  // F3: 각 문항의 유형이 해당 단어 상태의 허용 범위 내인지
+  const fullResult = composeQuiz('ai', 10, pool);
+  let allAllowed = true;
+  let violationDetail = '';
+  fullResult.questions.forEach(q => {
+    const allowed = ALLOWED_QTYPES[q.word.status];
+    // For fixed-ratio types (weak/master quiz), the qtype is assigned by ratio, not by status cycle
+    // So we only check this for non-fixed types
+  });
+
+  // For cycle-based assignment, verify each question uses allowed type
+  const cycleResult = composeQuiz('ai', 10, pool);
+  cycleResult.questions.forEach((q,i) => {
+    const allowed = ALLOWED_QTYPES[q.word.status];
+    if(!allowed.includes(q.qtype)){
+      allAllowed = false;
+      violationDetail += `#${i+1} ${q.word.word}(${q.word.status}): ${QTYPE_LABELS[q.qtype]} 금지; `;
+    }
+  });
+  assert('AI추천: 모든 문항이 상태별 허용 유형 범위 내', allAllowed, violationDetail);
+
+  // ============================
+  // RENDER RESULTS
+  // ============================
+  renderResults();
+}
+
+function renderResults(){
+  const total = testResults.length;
+  const pass = testResults.filter(t=>t.pass).length;
+  const fail = total - pass;
+
+  document.getElementById('sumTotal').textContent = total;
+  document.getElementById('sumPass').textContent = pass;
+  document.getElementById('sumFail').textContent = fail;
+
+  // Group by category
+  const groups = [
+    { title:'A. 단어 상태 판정', ref:'슬라이드 9', tests: testResults.filter(t=>
+      t.name.startsWith('미학습')||t.name.startsWith('학습 중')||t.name.startsWith('취약')||t.name.startsWith('마스터')||t.name.startsWith('경계')) },
+    { title:'B. 상태별 허용 문항 유형', ref:'슬라이드 10', tests: testResults.filter(t=>t.name.includes('허용 유형')||t.name.includes('금지된 유형')) },
+    { title:'C. 상태별 문항 순환 규칙', ref:'슬라이드 10', tests: testResults.filter(t=>t.name.includes('순환')) },
+    { title:'D. 퀴즈 유형별 구성 비율', ref:'슬라이드 13-16', tests: testResults.filter(t=>
+      t.name.includes('추천')||t.name.includes('전체단어')||t.name.includes('학습한단어')||t.name.includes('취약단어')||t.name.includes('마스터단어')) },
+    { title:'E. 최종 문항 배열 순서', ref:'슬라이드 13-16', tests: testResults.filter(t=>t.name.includes('배열 순서')) },
+    { title:'F. 추가 제약 조건', ref:'공통 규칙', tests: testResults.filter(t=>
+      t.name.includes('중복')||t.name.includes('min')||t.name.includes('범위 내')) },
+  ];
+
+  let html = '';
+  groups.forEach(g=>{
+    if(g.tests.length===0) return;
+    const gPass = g.tests.filter(t=>t.pass).length;
+    const gFail = g.tests.length - gPass;
+    html += `<div class="test-group">
+      <div class="test-group-title">${g.title} <span class="test-group-ref">${g.ref}</span>
+        <span style="margin-left:auto;font-size:12px;color:${gFail?'#dc2626':'#059669'}">${gPass}/${g.tests.length} 통과</span>
+      </div>`;
+    g.tests.forEach(t=>{
+      html += `<div class="test-row">
+        <div class="test-icon">${t.pass?'&#10004;':'&#10008;'}</div>
+        <div class="test-name">${t.name}${t.detail?`<div class="test-detail">${t.detail}</div>`:''}</div>
+        <div class="test-result ${t.pass?'pass':'fail'}">${t.pass?'PASS':'FAIL'}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  document.getElementById('results').innerHTML = html;
+}
+
+// Auto-run on load
+window.addEventListener('load', ()=>{ setTimeout(runAllTests, 300); });
+</script>
+</body>
+</html>

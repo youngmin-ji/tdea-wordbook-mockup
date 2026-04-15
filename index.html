@@ -992,6 +992,20 @@ const STATUS_CYCLES = {
   mastered:  ['e2k1','e2k2','k2e1','k2e2','spell'],
 };
 
+// Order rules per quiz type (from spec slides 13-16)
+const QUIZ_ORDER_RULES = {
+  ai:      ['e2k1','e2k2','k2e1','k2e2','fill1','fill2','spell'],
+  all:     ['e2k1','e2k2','k2e1','k2e2','fill1','fill2','spell'],
+  studied: ['e2k1','e2k2','k2e1','k2e2','fill1'],
+  weak:    ['e2k1','k2e1','fill1'],
+  master:  ['e2k1','e2k2','k2e1','k2e2','spell'],
+  favorite:['e2k1','e2k2','k2e1','k2e2','fill1','fill2','spell'],
+  topic:   ['e2k1','e2k2','k2e1','k2e2','fill1','fill2','spell'],
+  eiken5:  ['e2k1','e2k2','k2e1','k2e2','fill1','fill2','spell'],
+  eiken4:  ['e2k1','e2k2','k2e1','k2e2','fill1','fill2','spell'],
+  eiken3:  ['e2k1','e2k2','k2e1','k2e2','fill1','fill2','spell'],
+};
+
 let quiz = null; // active quiz state
 
 function getQuizWords(typeId, count){
@@ -1122,11 +1136,21 @@ function buildQuestion(word, qTypeId){
 function launchQuiz(count){
   const quizWords = getQuizWords(state.selectedQuizType, count);
   const questions = [];
+  const allowedQtypes = QUIZ_ORDER_RULES[state.selectedQuizType] || QUIZ_ORDER_RULES.ai;
 
   quizWords.forEach((w, i) => {
-    const cycle = STATUS_CYCLES[w.status] || STATUS_CYCLES.learning;
-    const qTypeId = cycle[i % cycle.length];
+    const fullCycle = STATUS_CYCLES[w.status] || STATUS_CYCLES.learning;
+    const cycle = fullCycle.filter(qt => allowedQtypes.includes(qt));
+    const safeCycle = cycle.length > 0 ? cycle : [fullCycle[0]];
+    const qTypeId = safeCycle[i % safeCycle.length];
     questions.push(buildQuestion(w, qTypeId));
+  });
+
+  // Sort by quiz type's order rule
+  questions.sort((a, b) => {
+    const oa = allowedQtypes.indexOf(a.qtype);
+    const ob = allowedQtypes.indexOf(b.qtype);
+    return (oa === -1 ? 99 : oa) - (ob === -1 ? 99 : ob);
   });
 
   quiz = {
